@@ -51,6 +51,14 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
  border-radius:5px;display:grid;place-items:center;flex:none}
 .bloco>header .dica{margin-left:auto;font-size:11.5px;color:var(--tinta3);display:flex;gap:7px;align-items:center}
 .bloco .corpo{padding:11px 13px}
+.bloco>header .recolher{background:transparent;border:1px solid transparent;border-radius:5px;color:var(--tinta3);
+ cursor:pointer;font-size:13px;line-height:1;padding:4px 7px;flex:none}
+.bloco>header .recolher:hover{background:var(--petroleo-luz);border-color:var(--petroleo);color:var(--petroleo)}
+.bloco.fechado>header{border-bottom:0}
+.bloco.fechado .corpo{display:none}
+.bloco.fechado>header h2{color:var(--tinta2)}
+.tag-cheio{font-family:var(--ui);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ambar);
+ background:var(--ambar-luz);border:1px solid #E7D3A2;border-radius:20px;padding:2px 8px;flex:none}
 .mini{font-size:11.5px;color:var(--tinta2);margin:0 0 8px}
 .grade{display:flex;flex-wrap:wrap;gap:11px}
 textarea{border:1px solid var(--linha);border-radius:var(--r);padding:7px 9px;width:100%;background:#FCFDFD;resize:vertical;min-height:38px;line-height:1.45}
@@ -108,6 +116,7 @@ input::-webkit-input-placeholder,textarea::-webkit-input-placeholder{color:#C9D4
  font-family:var(--ui);font-size:14px;letter-spacing:.07em;text-transform:uppercase}
 .btn-copiar:hover{background:#12747C}
 .btn-copiar.feito{background:#1B7F63}
+.btn-copiar.falhou{background:var(--brasa);font-size:12.5px}
 .contador{font-size:11px;color:#7C919B;font-family:var(--mono)}
 .rodape{max-width:1620px;margin:0 auto;padding:2px 16px 28px;color:var(--tinta3);font-size:11.5px}
 .rodape b{color:var(--tinta2)}
@@ -158,9 +167,15 @@ const ALERTAS=["Dor torácica típica ou opressiva","Dispneia importante / SatO2
 /* ===== COMORBIDADES ===== */
 const COMORB=["Hipertensão","Diabetes","Cardiopatia","Asma/DPOC","Tabagismo","Etilismo","Gestante"];
 
+/* itens que só fazem sentido em paciente do sexo feminino: somem da tela e do texto
+   quando o seletor está em Masculino */
+const SO_FEMININO={"Gestante":1,"Sinais de gravidade em gestante":1};
+const alertasVis=()=>ALERTAS.filter(x=>E.sexo==="F"||!SO_FEMININO[x]);
+const comorbVis=()=>COMORB.filter(x=>E.sexo==="F"||!SO_FEMININO[x]);
+
 /* ===== EXAME FÍSICO, POR LINHA ===== */
 const EXAME_ITENS=[
- {k:"consc",r:"Nível de consciência",n:()=>"Consciente, orientado em tempo e espaço, Glasgow 15"},
+ {k:"consc",r:"Nível de consciência",n:()=>"Consciente, orientad"+(E.sexo==="F"?"a":"o")+" em tempo e espaço, Glasgow 15"},
  {k:"ausc",r:"Ausculta cardíaca",n:()=>"BNF R 2T SS"},
  {k:"resp",r:"Ausculta respiratória",n:()=>"MV+ bilateral, sem ruídos adventícios"},
  {k:"abdome",r:"Abdome",n:()=>"Abdome plano, flácido, indolor à palpação, RHA+, sem massas ou visceromegalias"},
@@ -208,48 +223,69 @@ const VITAIS=[{k:"pa",r:"PA",ph:"120x80",un:"mmHg"},{k:"fc",r:"FC",ph:"78",un:"b
 
 /* ===== ESTADO ===== */
 let E={};
-function zerar(){E={sexo:E.sexo||"F",nome:"",idade:"",hora:"",
+/* paciente novo: o sexo volta ao padrão junto com o resto dos dados. Só sobrevivem
+   as preferências de apresentação (caixa alta, acentos) e o layout de blocos recolhidos. */
+function zerar(){E={sexo:"F",nome:"",idade:"",hora:"",
  queixa:"",hpp:{},hppTxt:"",alergias:"",medsUso:"",cirurgias:"",
  alertas:{},alertaDet:{},alertaExtra:"",
  vitais:{},
  exameTxt:{},exameNormal:{},geralCk:{},exameObs:"",
  hipoteses:"",conduta:{},condutaTxt:"",desfecho:"",retorno:"",
+ recolhido:E.recolhido||{},
  caixaAlta:E.caixaAlta!==false,semAcento:!!E.semAcento};}
 zerar();
 
 /* ===== CONSTRUTORES ===== */
-let nB=0;
-function bloco(soap,tit,dica,html,cor){nB++;
- return '<section class="bloco" style="--cf:var('+(cor||"--petroleo")+')"><header><span class="soap">'+soap+
- '</span><h2>'+tit+'</h2>'+(dica?'<span class="dica">'+dica+'</span>':'')+'</header><div class="corpo">'+html+'</div></section>';}
+/* Recolher um bloco é só visual: esconde o formulário, nunca altera o texto gerado.
+   Se houver conteúdo escondido lá dentro, o cabeçalho avisa com a etiqueta "contém dados" —
+   o médico nunca deve descobrir depois que assinou algo que a tela não mostrava. */
+function blocoTemConteudo(id){
+ switch(id){
+  case"queixa":return !!linhas(E.queixa).length;
+  case"antec":return comorbVis().some(o=>E.hpp[o])||!!linhas(E.hppTxt).length||!!E.alergias||!!E.medsUso||!!E.cirurgias;
+  case"alerta":return alertasVis().some(x=>E.alertas[x])||!!linhas(E.alertaExtra).length;
+  case"vitais":return VITAIS.some(v=>E.vitais[v.k]);
+  case"exame":return !!linhasExameFisico().length;
+  case"aval":return !!linhas(E.hipoteses).length;
+  case"plano":return CONDUTA.some(c=>E.conduta[c])||!!linhas(E.condutaTxt).length||!!E.desfecho||!!E.retorno;
+ }
+ return false;}
+function bloco(soap,tit,dica,html,cor,id){
+ const fech=!!E.recolhido[id],rot=(fech?"Expandir":"Recolher")+" "+tit;
+ return '<section class="bloco'+(fech?" fechado":"")+'" style="--cf:var('+(cor||"--petroleo")+')"><header><span class="soap">'+soap+
+ '</span><h2>'+tit+'</h2><span class="dica">'+(dica||"")+'</span>'+
+ (fech&&blocoTemConteudo(id)?'<span class="tag-cheio" title="este bloco está recolhido mas contribui com texto no prontuário">contém dados</span>':'')+
+ '<button class="recolher" data-recolher="'+id+'" data-foco="rec_'+id+'" aria-expanded="'+(fech?"false":"true")+
+ '" aria-label="'+esc(rot)+'" title="'+esc(rot)+'">'+(fech?"&#9656;":"&#9662;")+'</button>'+
+ '</header><div class="corpo">'+html+'</div></section>';}
 function ta(k,rot,ph,cls){return '<div class="campo" style="flex:1;min-width:250px">'+(rot?'<label for="i_'+k+'">'+rot+'</label>':'')+
  '<textarea id="i_'+k+'" class="'+(cls||"")+'" data-in="'+k+'" data-foco="'+k+'" placeholder="'+esc(ph||"")+'">'+esc(E[k])+'</textarea></div>';}
 function inp(k,rot,ph,larg){return '<div class="campo"><label for="i_'+k+'">'+rot+'</label><input id="i_'+k+'" data-in="'+k+
  '" data-foco="'+k+'" value="'+esc(E[k])+'" placeholder="'+esc(ph||"")+'" style="width:'+(larg||140)+'px" autocomplete="off"></div>';}
 
 function bQueixa(){
- const h='<div class="grade">'+ta("queixa","","- mãe refere choro excessivo à noite","codigo")+'</div>';
- return bloco("S","Queixa principal e HDA","história da doença atual",h);
+ const h='<div class="grade">'+ta("queixa","","- dor torácica há 2 horas, em aperto, irradiando para MSE","codigo")+'</div>';
+ return bloco("S","Queixa principal e HDA","história da doença atual",h,null,"queixa");
 }
 function bAntecedentes(){
  let h='<p class="mini">Comorbidades — marca o que se aplica</p>'+
-  '<div class="toggles">'+COMORB.map(o=>'<button class="tg cx" data-map="hpp" data-key="'+esc(o)+
+  '<div class="toggles">'+comorbVis().map(o=>'<button class="tg cx" data-map="hpp" data-key="'+esc(o)+
    '" aria-pressed="'+(E.hpp[o]?"true":"false")+'"><span class="mark"></span>'+esc(o)+'</button>').join("")+'</div>'+
-  '<div class="grade" style="margin-top:10px">'+ta("hppTxt","Outros antecedentes","- outras comorbidades relevantes","codigo")+'</div>'+
+  '<div class="grade" style="margin-top:10px">'+ta("hppTxt","Outros antecedentes","- cirúrgicos, familiares, obstétricos","codigo")+'</div>'+
   '<div class="pares" style="margin-top:10px">'+
    '<div class="par"><label for="i_alergias">Alergias</label><input id="i_alergias" data-in="alergias" data-foco="alergias" value="'+esc(E.alergias)+'" placeholder="nega / qual" autocomplete="off"></div>'+
    '<div class="par"><label for="i_medsUso">Medicações em uso</label><input id="i_medsUso" data-in="medsUso" data-foco="medsUso" value="'+esc(E.medsUso)+'" placeholder="nega / quais" autocomplete="off"></div>'+
    '<div class="par"><label for="i_cirurgias">Cirurgias prévias</label><input id="i_cirurgias" data-in="cirurgias" data-foco="cirurgias" value="'+esc(E.cirurgias)+'" placeholder="nega / quais" autocomplete="off"></div>'+
   '</div>';
- return bloco("S","Antecedentes","campo vazio não sai no texto",h);
+ return bloco("S","Antecedentes","campo vazio não sai no texto",h,null,"antec");
 }
 function bAlerta(){
- const n=ALERTAS.filter(x=>E.alertas[x]==="PRESENTE").length;
+ const n=alertasVis().filter(x=>E.alertas[x]==="PRESENTE").length;
  let h='<p class="mini"><b>## SINAIS DE ALERTA:</b> — só sai no texto o que for marcado</p>'+
   '<div style="margin-bottom:10px"><button class="btn-mini" data-acao="todosAusentes">Todos ausentes</button> '+
   '<button class="btn-mini" data-acao="limpaAlertas">Limpar</button></div>';
- h+=ALERTAS.map(function(o,i){
-  const v=E.alertas[o]||"";
+ h+=alertasVis().map(function(o){
+  const v=E.alertas[o]||"",i=ALERTAS.indexOf(o);
   return '<div class="linha-alerta">'+
    '<span class="rot-alerta">'+esc(o)+'</span>'+
    '<div class="pilulas"><button class="pil" data-tri="alertas" data-key="'+esc(o)+'" data-v="PRESENTE" aria-pressed="'+(v==="PRESENTE"?"true":"false")+'">PRESENTE</button>'+
@@ -259,14 +295,14 @@ function bAlerta(){
    '</div>';
  }).join("");
  h+='<div class="grade" style="margin-top:10px">'+ta("alertaExtra","Outros sinais de alerta presentes","- sinal fora da lista","codigo")+'</div>';
- return bloco("S","Sinais de alerta",n?'<b style="color:var(--brasa)">'+n+' presente'+(n>1?"s":"")+'</b>':"nenhum presente",h);
+ return bloco("S","Sinais de alerta",n?'<b style="color:var(--brasa)">'+n+' presente'+(n>1?"s":"")+'</b>':"nenhum presente",h,null,"alerta");
 }
 function bVitais(){
  const h='<div class="pares">'+VITAIS.map(v=>
   '<div class="par"><label for="i_v_'+v.k+'">'+v.r+'</label><input id="i_v_'+v.k+'" data-par="vitais" data-key="'+v.k+
    '" data-foco="v'+v.k+'" value="'+esc(E.vitais[v.k]||"")+'" placeholder="'+v.ph+'" autocomplete="off">'+
    '<span style="color:var(--tinta3);font-size:11.5px">'+v.un+'</span></div>').join("")+'</div>';
- return bloco("O","Sinais vitais","campo vazio não sai no texto",h);
+ return bloco("O","Sinais vitais","campo vazio não sai no texto",h,null,"vitais");
 }
 function linhaExameCampo(it){
  if(it.k==="geral")
@@ -288,11 +324,11 @@ function bExame(){
  let h=EXAME_ITENS.map(linhaExameCampo).join("");
  h+='<div class="grade" style="margin-top:10px">'+ta("exameObs","Outras observações","- reavaliar em 1 hora","codigo")+'</div>';
  return bloco("O","Exame físico",'<button class="btn-mini" data-acao="resetExame">tudo normal</button> '+
-  '<button class="btn-mini" data-acao="omitirExame">omitir tudo</button>',h);
+  '<button class="btn-mini" data-acao="omitirExame">omitir tudo</button>',h,null,"exame");
 }
 function bAval(){
  const h='<div class="grade">'+ta("hipoteses","","- cefaleia tensional","codigo")+'</div>';
- return bloco("A","Hipóteses diagnósticas","",h);
+ return bloco("A","Hipóteses diagnósticas","",h,null,"aval");
 }
 const CONDUTA=["Solicito exames complementares","Prescrevo medicação sintomática","Realizo hidratação venosa",
  "Encaminho à observação","Encaminho à referência hospitalar","Oriento sinais de alarme para retorno","Alta com orientações"];
@@ -304,7 +340,7 @@ function bPlano(){
    '<div class="par"><label for="i_desfecho">Desfecho</label><input id="i_desfecho" data-in="desfecho" data-foco="desfecho" value="'+esc(E.desfecho)+'" placeholder="alta / observação / internação" autocomplete="off"></div>'+
    '<div class="par"><label for="i_retorno">Retorno</label><input id="i_retorno" data-in="retorno" data-foco="retorno" value="'+esc(E.retorno)+'" placeholder="se piora, ou em 48h" autocomplete="off"></div>'+
   '</div>';
- return bloco("P","Conduta","",h);
+ return bloco("P","Conduta","",h,null,"plano");
 }
 
 /* ===== GERAÇÃO DO TEXTO ===== */
@@ -316,17 +352,20 @@ function gerarTexto(){
  L.push("S");
  if(E.queixa){L.push("## QUEIXA PRINCIPAL E HDA:");linhas(E.queixa).forEach(x=>L.push(x));L.push("");}
 
- const hp=COMORB.filter(o=>E.hpp[o]),hpx=linhas(E.hppTxt);
+ const hp=comorbVis().filter(o=>E.hpp[o]),hpx=linhas(E.hppTxt);
  const antec=[];
- if(hp.length||hpx.length)antec.push("Comorbidades: "+hp.concat(hpx.map(x=>x.replace(/^[-*]\s*/,""))).join(", "));
+ /* comorbidade marcada e antecedente livre são coisas diferentes e saem com rótulos diferentes:
+    história familiar/cirúrgica não pode ser assinada como comorbidade do paciente */
+ if(hp.length)antec.push("Comorbidades: "+hp.join(", "));
+ if(hpx.length)antec.push("Outros antecedentes: "+hpx.map(x=>x.replace(/^[-*]\s*/,"")).join(", "));
  if(E.alergias)antec.push("Alergias = "+E.alergias);
  if(E.medsUso)antec.push("Medicações em uso = "+E.medsUso);
  if(E.cirurgias)antec.push("Cirurgias prévias = "+E.cirurgias);
  if(antec.length){L.push("## ANTECEDENTES:");antec.forEach(x=>L.push(x));L.push("");}
 
- const on=ALERTAS.filter(x=>E.alertas[x]==="PRESENTE").map(x=>x+(E.alertaDet[x]?" - "+E.alertaDet[x]:""))
+ const on=alertasVis().filter(x=>E.alertas[x]==="PRESENTE").map(x=>x+(E.alertaDet[x]?" - "+E.alertaDet[x]:""))
    .concat(linhas(E.alertaExtra).map(x=>x.replace(/^[-*]\s*/,"")));
- const off=ALERTAS.filter(x=>E.alertas[x]==="AUSENTE").map(x=>x+(E.alertaDet[x]?" - "+E.alertaDet[x]:""));
+ const off=alertasVis().filter(x=>E.alertas[x]==="AUSENTE").map(x=>x+(E.alertaDet[x]?" - "+E.alertaDet[x]:""));
  const minusc=s=>s.charAt(0).toLowerCase()+s.slice(1);
  if(on.length||off.length){
   L.push("## SINAIS DE ALERTA:");
@@ -341,9 +380,9 @@ function gerarTexto(){
  L.push.apply(L,linhasExameFisico());
  L.push("");
 
+ /* o mnemônico SOAP fica sempre; nenhuma frase entra sozinha sob ele */
  L.push("A");
  if(E.hipoteses)linhas(E.hipoteses).forEach(x=>L.push(bullet(x)));
- else L.push("- Hipóteses diagnósticas a definir");
  L.push("");
 
  L.push("P");
@@ -364,9 +403,15 @@ function gerar(){
 }
 
 /* ===== RENDER ===== */
+/* o seletor de sexo é desenhado a partir de E.sexo, nunca ajustado à mão:
+   um único ponto de verdade, senão a tela e o texto divergem */
+function pintarSexo(){
+ [].forEach.call($("#sexo").querySelectorAll("button[data-s]"),
+  x=>x.setAttribute("aria-pressed",x.dataset.s===E.sexo?"true":"false"));
+}
 function render(){
  const at=document.activeElement,fo=at&&at.dataset?at.dataset.foco:null,pos=at&&at.selectionStart!=null?at.selectionStart:null;
- nB=0;
+ pintarSexo();
  $("#form").innerHTML=bQueixa()+bAntecedentes()+bAlerta()+bVitais()+bExame()+bAval()+bPlano();
  if(fo){const el=$('#form [data-foco="'+fo+'"]');if(el){el.focus();
   if(pos!=null&&el.setSelectionRange)try{el.setSelectionRange(pos,pos)}catch(e){}}}
@@ -382,21 +427,36 @@ function acao(a){
  if(a==="omitirExame"){EXAME_ITENS.forEach(it=>{if(it.k!=="geral"){E.exameNormal[it.k]=false;E.exameTxt[it.k]="";}});
   E.exameTxt.geral="";
   GERAL_ADJ.forEach(g=>E.geralCk[g[0]]=false);}
- if(a==="todosAusentes")ALERTAS.forEach(x=>{if(E.alertas[x]!=="PRESENTE")E.alertas[x]="AUSENTE";});
+ if(a==="todosAusentes")alertasVis().forEach(x=>{if(E.alertas[x]!=="PRESENTE"){E.alertas[x]="AUSENTE";E.alertaDet[x]="";}});
  if(a==="limpaAlertas"){E.alertas={};E.alertaDet={};}
 }
 const F=$("#form");
 function inputChange(e){
  const t=e.target,d=t.dataset;
- if(d.in){E[d.in]=t.value;gerar();}
- else if(d.par){E[d.par][d.key]=t.value;if(d.par==="exameTxt")E.exameNormal[d.key]=false;gerar();}
+ if(d.in){E[d.in]=t.value;gerar();return;}
+ if(!d.par)return;
+ E[d.par][d.key]=t.value;
+ /* editar à mão desliga o marcador "Normal"; só o render() redesenha o botão, senão
+    a tela mostra "Normal" marcado ao lado de um achado alterado. Redesenha só na
+    transição (primeira tecla), não a cada caractere. */
+ if(d.par==="exameTxt"&&E.exameNormal[d.key]){
+  E.exameNormal[d.key]=false;render();return;}
+ /* descrever um sinal de alerta é afirmá-lo: o texto passa a valer como PRESENTE.
+    Sem isso o achado digitado era descartado em silêncio. */
+ if(d.par==="alertaDet"&&t.value.trim()&&E.alertas[d.key]!=="PRESENTE"){
+  E.alertas[d.key]="PRESENTE";render();return;}
+ gerar();
 }
 F.addEventListener("input",inputChange);
 F.addEventListener("change",inputChange);
 F.addEventListener("click",function(e){
  const b=e.target.closest("button");if(!b)return;const d=b.dataset;
  if(d.map)E[d.map][d.key]=!E[d.map][d.key];
- else if(d.tri)E[d.tri][d.key]=(E[d.tri][d.key]===d.v?"":d.v);
+ /* o detalhe descrevia o achado no estado anterior; trocar o estado invalida a descrição.
+    Mantê-la faria o prontuário negar um achado com a descrição do achado presente. */
+ else if(d.tri){E[d.tri][d.key]=(E[d.tri][d.key]===d.v?"":d.v);
+  if(d.tri==="alertas")E.alertaDet[d.key]="";}
+ else if(d.recolher)E.recolhido[d.recolher]=!E.recolhido[d.recolher];
  else if(d.normal){const k=d.normal;E.exameNormal[k]=!E.exameNormal[k];
   const it=EXAME_ITENS.find(x=>x.k===k);
   E.exameTxt[k]=E.exameNormal[k]?it.n():"";}
@@ -405,8 +465,12 @@ F.addEventListener("click",function(e){
  render();
 });
 $("#sexo").addEventListener("click",function(e){
- const b=e.target.closest("button[data-s]");if(!b)return;E.sexo=b.dataset.s;
- [].forEach.call(this.querySelectorAll("button"),x=>x.setAttribute("aria-pressed",x===b?"true":"false"));
+ const b=e.target.closest("button[data-s]");if(!b)return;
+ E.sexo=b.dataset.s;
+ /* some da tela e também do estado: senão um "Gestante" marcado antes da troca
+    continuaria saindo no texto de um paciente masculino */
+ if(E.sexo!=="F")Object.keys(SO_FEMININO).forEach(k=>{
+  delete E.hpp[k];delete E.alertas[k];delete E.alertaDet[k];});
  resyncExameNormal();
  render();});
 ["nome","idade","hora"].forEach(function(k){
@@ -415,15 +479,35 @@ $("#sexo").addEventListener("click",function(e){
 $("#btnLimpar").addEventListener("click",function(){
  if(confirm("Limpar todos os campos?")){zerar();
   ["nome","idade","hora"].forEach(k=>document.getElementById(k).value="");
-  $("#sexo").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.s==="F"?"true":"false"));
   render();}});
 $("#optCaixa").addEventListener("click",function(){E.caixaAlta=!E.caixaAlta;this.setAttribute("aria-pressed",E.caixaAlta);gerar();});
 $("#optAcento").addEventListener("click",function(){E.semAcento=!E.semAcento;this.setAttribute("aria-pressed",E.semAcento);gerar();});
+/* Copiar não pode falhar em silêncio: se o médico acha que copiou e não copiou,
+   ele cola no sistema o que estava na área de transferência antes — possivelmente
+   o prontuário do paciente anterior. Toda falha precisa ser visível e ter saída manual. */
+const ROT_COPIAR="Copiar para o prontuário";
+function selecionarSaida(){
+ const el=$("#saida"),sel=window.getSelection(),r=document.createRange();
+ r.selectNodeContents(el);sel.removeAllRanges();sel.addRange(r);
+}
+function copiarManual(){
+ selecionarSaida();
+ try{return document.execCommand("copy");}catch(e){return false;}
+}
+function avisoCopia(btn,txt,cls,ms){
+ btn.classList.remove("feito","falhou");if(cls)btn.classList.add(cls);
+ btn.textContent=txt;
+ setTimeout(()=>{btn.classList.remove("feito","falhou");btn.textContent=ROT_COPIAR;},ms);
+}
 $("#btnCopiar").addEventListener("click",function(){
- navigator.clipboard.writeText($("#saida").textContent).then(()=>{
-  this.classList.add("feito");this.textContent="Copiado!";
-  setTimeout(()=>{this.classList.remove("feito");this.textContent="Copiar para o prontuário";},1400);
- });});
+ const btn=this,txt=$("#saida").textContent;
+ const ok=()=>avisoCopia(btn,"Copiado!","feito",1400);
+ const falhou=()=>{selecionarSaida();avisoCopia(btn,"Não copiou — use Ctrl+C","falhou",6000);};
+ const tentarManual=()=>{copiarManual()?ok():falhou();};
+ if(navigator.clipboard&&navigator.clipboard.writeText){
+  navigator.clipboard.writeText(txt).then(ok,tentarManual);
+ }else tentarManual();
+});
 
 render();
 </script>
