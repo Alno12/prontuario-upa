@@ -45,6 +45,8 @@ CHROMIUM_PATH=/caminho/para/chrome node testes/regressao.js
 | T19 | Caixa de idade gestacional aparecendo sem Gestante marcado, ou sobrevivendo à troca de sexo/desmarcação |
 | T20, T21 | "Nega" convivendo com texto digitado em Alergia a medicamentos / Medicações em uso — mesma classe de contradição do T2, aplicada a esses dois campos |
 | T22 | Erro de JS numa sequência combinada dos controles novos |
+| T23 | O prefixo "Rótulo = " voltar no exame físico (é exceção deliberada — sinais vitais e antecedentes continuam com rótulo) — comparação exata com o texto de um exame normal |
+| T24 | O nome do campo do exame físico sumir de vez (placeholder/aria-label) em vez de virar `it.r+" = "+txt` na saída |
 
 ## Ao mexer na ferramenta
 

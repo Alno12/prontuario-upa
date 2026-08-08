@@ -87,15 +87,15 @@ textarea.codigo{font-family:var(--mono);font-size:12.5px;line-height:1.5;min-hei
 .par input{flex:1;min-width:0;border:1px solid var(--linha2);border-radius:5px;padding:4px 8px;background:#FBFDFC}
 .par input:focus{border-color:var(--petroleo);background:#fff}
 .par input:placeholder-shown{background:#F4F7F6;color:var(--tinta3)}
-.cx,.par label,.linha-alerta .rot-alerta,.linha-exame .rot-exame{text-transform:uppercase}
+.cx,.par label,.linha-alerta .rot-alerta{text-transform:uppercase}
 
 .linha-alerta,.linha-exame{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:6px}
-.linha-alerta .rot-alerta,.linha-exame .rot-exame{font-family:var(--ui);font-size:12px;letter-spacing:.04em;color:var(--tinta2);flex:0 0 210px}
+.linha-alerta .rot-alerta{font-family:var(--ui);font-size:12px;letter-spacing:.04em;color:var(--tinta2);flex:0 0 210px}
 .linha-alerta .pil{padding:4px 11px;font-size:12.5px}
 .linha-alerta .pil[data-v="PRESENTE"][aria-pressed="true"]{background:var(--brasa);border-color:var(--brasa);color:#fff}
 .linha-alerta .pil[data-v="AUSENTE"][aria-pressed="true"],
 .linha-alerta .pil[data-v="NEGA"][aria-pressed="true"]{background:var(--petroleo);border-color:var(--petroleo);color:#fff}
-@media(max-width:640px){.linha-alerta .rot-alerta,.linha-exame .rot-exame{flex:1 0 100%}}
+@media(max-width:640px){.linha-alerta .rot-alerta{flex:1 0 100%}}
 
 input::placeholder,textarea::placeholder{color:#C9D4D8;opacity:1}
 input::-webkit-input-placeholder,textarea::-webkit-input-placeholder{color:#C9D4D8}
@@ -212,14 +212,13 @@ function linhaGeral(){
  const comp=(E.exameTxt.geral||"").trim();
  if(!on.length&&!comp)return null;
  const frase=on.join(", ");
- const valor=on.length?(frase.charAt(0).toUpperCase()+frase.slice(1)+(comp?" - "+comp:"")):comp;
- return "Estado geral = "+valor;
+ return on.length?(frase.charAt(0).toUpperCase()+frase.slice(1)+(comp?" - "+comp:"")):comp;
 }
 function linhaExameItem(it){
  if(it.k==="geral")return linhaGeral();
  const txt=(E.exameTxt[it.k]||"").trim();
  if(!txt)return null;
- return it.r+" = "+txt;
+ return txt;
 }
 function resyncExameNormal(){
  EXAME_ITENS.forEach(it=>{
@@ -341,20 +340,25 @@ function bVitais(){
    '<span style="color:var(--tinta3);font-size:11.5px">'+v.un+'</span></div>').join("")+'</div>';
  return bloco("O","Sinais vitais","campo vazio não sai no texto",h,null,"vitais");
 }
+/* Sem rótulo fixo na linha: o texto gerado sai como frase corrida, uma por linha,
+   sem "Rótulo = " na frente — exceção deliberada ao padrão "Rótulo = valor" do
+   resto do prontuário (sinais vitais e antecedentes continuam nesse padrão).
+   O nome do campo vira placeholder — visível só enquanto vazio, some ao digitar,
+   igual a qualquer outro campo — e aria-label, pra não regredir acessibilidade
+   ao tirar o rótulo visível. */
 function linhaExameCampo(it){
  if(it.k==="geral")
   return '<div class="linha-exame">'+
-   '<span class="rot-exame">'+esc(it.r)+'</span>'+
    '<div class="pilulas">'+GERAL_ADJ.map(a=>'<button class="tg verde cx" data-map="geralCk" data-key="'+a[0]+
     '" aria-pressed="'+(E.geralCk[a[0]]?"true":"false")+'"><span class="mark"></span>'+(E.sexo==="F"?a[2]:a[1])+'</button>').join("")+'</div>'+
    '<input data-par="exameTxt" data-key="geral" data-foco="exameTxtgeral" value="'+esc(E.exameTxt.geral||"")+
-    '" placeholder="complementar" style="flex:1;min-width:170px;border:1px solid var(--linha);border-radius:var(--r);padding:4px 9px" autocomplete="off">'+
+    '" placeholder="Estado geral — complementar" aria-label="Estado geral, complementar" style="flex:1;min-width:170px;border:1px solid var(--linha);border-radius:var(--r);padding:4px 9px" autocomplete="off">'+
    '</div>';
  return '<div class="linha-exame">'+
-  '<span class="rot-exame">'+esc(it.r)+'</span>'+
-  '<button class="tg verde cx" data-normal="'+it.k+'" aria-pressed="'+(E.exameNormal[it.k]?"true":"false")+'"><span class="mark"></span>Normal</button>'+
+  '<button class="tg verde cx" data-normal="'+it.k+'" aria-pressed="'+(E.exameNormal[it.k]?"true":"false")+
+   '" aria-label="'+esc(it.r)+' — marcar como normal"><span class="mark"></span>Normal</button>'+
   '<input data-par="exameTxt" data-key="'+it.k+'" data-foco="exameTxt'+it.k+'" value="'+esc(E.exameTxt[it.k]||"")+
-   '" placeholder="descreva o achado" style="flex:1;min-width:170px;border:1px solid var(--linha);border-radius:var(--r);padding:4px 9px" autocomplete="off">'+
+   '" placeholder="'+esc(it.r)+'" aria-label="'+esc(it.r)+'" style="flex:1;min-width:170px;border:1px solid var(--linha);border-radius:var(--r);padding:4px 9px" autocomplete="off">'+
   '</div>';
 }
 function bExame(){

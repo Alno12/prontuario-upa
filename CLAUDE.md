@@ -36,8 +36,19 @@ saem sempre, como esqueleto do registro. Elas não afirmam nada sobre o paciente
 qualquer frase abaixo delas, sim — por isso nenhuma frase pode ser gerada sozinha.
 Com o formulário em branco a saída inteira é `S\nO\n\nA\n\nP\n` e mais nada.
 
-**Padrão "Rótulo = valor".** Cada linha sai como `Ausculta cardíaca = BNF R 2T SS`,
-não como a frase solta. Vale para exame físico, sinais vitais e antecedentes.
+**Padrão "Rótulo = valor".** Cada linha sai como `PA = 120x80 mmHg` ou
+`Alergia a medicamentos = dipirona`, não como a frase solta. Vale para sinais
+vitais e antecedentes.
+
+**Exame físico é a exceção deliberada.** Ali cada linha sai como frase corrida —
+`BNF R 2T SS`, sem `Ausculta cardíaca = ` na frente — porque é assim que o exame
+físico se lê num prontuário, uma frase por sistema, sem rótulo repetido. Por
+consequência, a tela também não tem rótulo fixo em cada linha (a "coluna 1" que
+existia antes foi removida): o nome do campo vira `placeholder` — visível só
+enquanto o campo está vazio, some ao digitar, igual a qualquer outro campo do
+app — e `aria-label`, para não perder a identificação do campo para leitor de
+tela ao tirar o rótulo visível. Ao adicionar uma linha nova em `EXAME_ITENS`,
+não escreva `it.r+" = "+txt` na geração do texto — devolva só `txt`.
 
 **Concordância de gênero.** O seletor Feminino/Masculino no topo (`E.sexo`) muda
 as frases que descrevem o paciente. Hoje duas coisas dependem dele: os quatro
