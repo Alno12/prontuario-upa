@@ -39,6 +39,12 @@ CHROMIUM_PATH=/caminho/para/chrome node testes/regressao.js
 | T11 | Exemplo pediátrico convidando a um uso que as frases de exame normal (todas adultas) não atendem |
 | T12, T13, T14 | Recolher um bloco alterando o texto gerado, ou conteúdo escondido sem aviso |
 | T15a–d | Regressões antigas: marcador "Normal", edição manual sobrevivendo à troca de sexo, "Sem acento" e "CAIXA ALTA" |
+| T16 | Asma e DPOC voltarem a ser um marcador combinado; Dislipidemia sumir da lista de comorbidades |
+| T17 | "Nega comorbidades" coexistindo com uma comorbidade marcada — a mesma contradição que motivou o T2, aplicada às comorbidades |
+| T18 | Tabagismo/Etilismo voltarem para a grade simples de comorbidades, perdendo o estado "Nega" |
+| T19 | Caixa de idade gestacional aparecendo sem Gestante marcado, ou sobrevivendo à troca de sexo/desmarcação |
+| T20, T21 | "Nega" convivendo com texto digitado em Alergia a medicamentos / Medicações em uso — mesma classe de contradição do T2, aplicada a esses dois campos |
+| T22 | Erro de JS numa sequência combinada dos controles novos |
 
 ## Ao mexer na ferramenta
 

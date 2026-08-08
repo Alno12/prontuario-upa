@@ -78,6 +78,7 @@ textarea.codigo{font-family:var(--mono);font-size:12.5px;line-height:1.5;min-hei
 .pil{border:1px solid var(--linha);background:#FAFCFB;border-radius:20px;padding:5px 13px;cursor:pointer;color:var(--tinta2)}
 .pil[aria-pressed="true"]{background:var(--tinta);border-color:var(--tinta);color:#fff}
 .pil:hover{border-color:var(--tinta3)}
+.pil-mini{padding:3px 10px;font-size:11px;flex:none}
 
 /* pares chave = valor */
 .pares{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px 12px}
@@ -92,7 +93,8 @@ textarea.codigo{font-family:var(--mono);font-size:12.5px;line-height:1.5;min-hei
 .linha-alerta .rot-alerta,.linha-exame .rot-exame{font-family:var(--ui);font-size:12px;letter-spacing:.04em;color:var(--tinta2);flex:0 0 210px}
 .linha-alerta .pil{padding:4px 11px;font-size:12.5px}
 .linha-alerta .pil[data-v="PRESENTE"][aria-pressed="true"]{background:var(--brasa);border-color:var(--brasa);color:#fff}
-.linha-alerta .pil[data-v="AUSENTE"][aria-pressed="true"]{background:var(--petroleo);border-color:var(--petroleo);color:#fff}
+.linha-alerta .pil[data-v="AUSENTE"][aria-pressed="true"],
+.linha-alerta .pil[data-v="NEGA"][aria-pressed="true"]{background:var(--petroleo);border-color:var(--petroleo);color:#fff}
 @media(max-width:640px){.linha-alerta .rot-alerta,.linha-exame .rot-exame{flex:1 0 100%}}
 
 input::placeholder,textarea::placeholder{color:#C9D4D8;opacity:1}
@@ -165,13 +167,29 @@ const ALERTAS=["Dor torácica típica ou opressiva","Dispneia importante / SatO2
  "Sinais de gravidade em gestante"];
 
 /* ===== COMORBIDADES ===== */
-const COMORB=["Hipertensão","Diabetes","Cardiopatia","Asma/DPOC","Tabagismo","Etilismo","Gestante"];
+const COMORB=["Hipertensão","Diabetes","Dislipidemia","Cardiopatia","Asma","DPOC","Gestante"];
+
+/* Tabagismo/Etilismo saíram da grade de comorbidades: uma "Nega comorbidades" geral não
+   serve pra eles, porque é comum marcar "Hipertensão" e ainda assim precisar registrar
+   "nega tabagismo, nega etilismo" explicitamente. Viram tri-state próprio, mesmo padrão
+   PRESENTE/AUSENTE dos sinais de alerta. */
+const SOCIAL=["Tabagismo","Etilismo"];
 
 /* itens que só fazem sentido em paciente do sexo feminino: somem da tela e do texto
    quando o seletor está em Masculino */
 const SO_FEMININO={"Gestante":1,"Sinais de gravidade em gestante":1};
 const alertasVis=()=>ALERTAS.filter(x=>E.sexo==="F"||!SO_FEMININO[x]);
 const comorbVis=()=>COMORB.filter(x=>E.sexo==="F"||!SO_FEMININO[x]);
+
+/* idade gestacional: "IG 32 semanas e 4 dias". Campo vazio não aparece, igual ao resto. */
+function gestIdadeTexto(){
+ const s=(E.gestIdade.semanas||"").trim(),d=(E.gestIdade.dias||"").trim();
+ if(!s&&!d)return"";
+ const partes=[];
+ if(s)partes.push(s+" semana"+(s==="1"?"":"s"));
+ if(d)partes.push(d+" dia"+(d==="1"?"":"s"));
+ return" (IG "+partes.join(" e ")+")";
+}
 
 /* ===== EXAME FÍSICO, POR LINHA ===== */
 const EXAME_ITENS=[
@@ -226,7 +244,8 @@ let E={};
 /* paciente novo: o sexo volta ao padrão junto com o resto dos dados. Só sobrevivem
    as preferências de apresentação (caixa alta, acentos) e o layout de blocos recolhidos. */
 function zerar(){E={sexo:"F",nome:"",idade:"",hora:"",
- queixa:"",hpp:{},hppTxt:"",alergias:"",medsUso:"",cirurgias:"",
+ queixa:"",hpp:{},negaHpp:false,hppTxt:"",social:{},gestIdade:{semanas:"",dias:""},
+ alergias:"",negaAlergias:false,medsUso:"",negaMeds:false,cirurgias:"",
  alertas:{},alertaDet:{},alertaExtra:"",
  vitais:{},
  exameTxt:{},exameNormal:{},geralCk:{},exameObs:"",
@@ -242,7 +261,8 @@ zerar();
 function blocoTemConteudo(id){
  switch(id){
   case"queixa":return !!linhas(E.queixa).length;
-  case"antec":return comorbVis().some(o=>E.hpp[o])||!!linhas(E.hppTxt).length||!!E.alergias||!!E.medsUso||!!E.cirurgias;
+  case"antec":return comorbVis().some(o=>E.hpp[o])||E.negaHpp||!!linhas(E.hppTxt).length||
+   SOCIAL.some(o=>E.social[o])||!!E.alergias||E.negaAlergias||!!E.medsUso||E.negaMeds||!!E.cirurgias;
   case"alerta":return alertasVis().some(x=>E.alertas[x])||!!linhas(E.alertaExtra).length;
   case"vitais":return VITAIS.some(v=>E.vitais[v.k]);
   case"exame":return !!linhasExameFisico().length;
@@ -268,13 +288,30 @@ function bQueixa(){
  return bloco("S","Queixa principal e HDA","história da doença atual",h,null,"queixa");
 }
 function bAntecedentes(){
- let h='<p class="mini">Comorbidades — marca o que se aplica</p>'+
+ let h='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
+   '<p class="mini" style="margin:0">Comorbidades — marca o que se aplica</p>'+
+   '<button class="tg verde cx" data-bool="negaHpp" aria-pressed="'+(E.negaHpp?"true":"false")+
+   '"><span class="mark"></span>Nega comorbidades</button></div>'+
   '<div class="toggles">'+comorbVis().map(o=>'<button class="tg cx" data-map="hpp" data-key="'+esc(o)+
-   '" aria-pressed="'+(E.hpp[o]?"true":"false")+'"><span class="mark"></span>'+esc(o)+'</button>').join("")+'</div>'+
+   '" aria-pressed="'+(E.hpp[o]?"true":"false")+'"><span class="mark"></span>'+esc(o)+'</button>').join("")+'</div>';
+ if(E.hpp["Gestante"])h+='<div class="pares" style="margin-top:8px">'+
+   '<div class="par"><label for="i_gestSem">IG semanas</label><input id="i_gestSem" data-par="gestIdade" data-key="semanas" data-foco="gestSem" value="'+esc(E.gestIdade.semanas)+'" placeholder="32" autocomplete="off"></div>'+
+   '<div class="par"><label for="i_gestDia">IG dias</label><input id="i_gestDia" data-par="gestIdade" data-key="dias" data-foco="gestDia" value="'+esc(E.gestIdade.dias)+'" placeholder="4" autocomplete="off"></div>'+
+  '</div>';
+ h+='<div style="margin-top:10px">'+SOCIAL.map(function(o){
+   const v=E.social[o]||"";
+   return '<div class="linha-alerta">'+
+    '<span class="rot-alerta">'+esc(o)+'</span>'+
+    '<div class="pilulas"><button class="pil" data-tri="social" data-key="'+esc(o)+'" data-v="PRESENTE" aria-pressed="'+(v==="PRESENTE"?"true":"false")+'">PRESENTE</button>'+
+    '<button class="pil" data-tri="social" data-key="'+esc(o)+'" data-v="NEGA" aria-pressed="'+(v==="NEGA"?"true":"false")+'">NEGA</button></div>'+
+    '</div>';
+  }).join("")+'</div>'+
   '<div class="grade" style="margin-top:10px">'+ta("hppTxt","Outros antecedentes","- cirúrgicos, familiares, obstétricos","codigo")+'</div>'+
   '<div class="pares" style="margin-top:10px">'+
-   '<div class="par"><label for="i_alergias">Alergias</label><input id="i_alergias" data-in="alergias" data-foco="alergias" value="'+esc(E.alergias)+'" placeholder="nega / qual" autocomplete="off"></div>'+
-   '<div class="par"><label for="i_medsUso">Medicações em uso</label><input id="i_medsUso" data-in="medsUso" data-foco="medsUso" value="'+esc(E.medsUso)+'" placeholder="nega / quais" autocomplete="off"></div>'+
+   '<div class="par" style="grid-column:1/-1"><label for="i_alergias">Alergia a medicamentos</label><input id="i_alergias" data-in="alergias" data-foco="alergias" value="'+esc(E.alergias)+
+    '" placeholder="qual" autocomplete="off"><button class="pil pil-mini" data-bool="negaAlergias" aria-pressed="'+(E.negaAlergias?"true":"false")+'">NEGA</button></div>'+
+   '<div class="par" style="grid-column:1/-1"><label for="i_medsUso">Medicações em uso</label><input id="i_medsUso" data-in="medsUso" data-foco="medsUso" value="'+esc(E.medsUso)+
+    '" placeholder="quais" autocomplete="off"><button class="pil pil-mini" data-bool="negaMeds" aria-pressed="'+(E.negaMeds?"true":"false")+'">NEGA</button></div>'+
    '<div class="par"><label for="i_cirurgias">Cirurgias prévias</label><input id="i_cirurgias" data-in="cirurgias" data-foco="cirurgias" value="'+esc(E.cirurgias)+'" placeholder="nega / quais" autocomplete="off"></div>'+
   '</div>';
  return bloco("S","Antecedentes","campo vazio não sai no texto",h,null,"antec");
@@ -356,10 +393,17 @@ function gerarTexto(){
  const antec=[];
  /* comorbidade marcada e antecedente livre são coisas diferentes e saem com rótulos diferentes:
     história familiar/cirúrgica não pode ser assinada como comorbidade do paciente */
- if(hp.length)antec.push("Comorbidades: "+hp.join(", "));
+ if(E.negaHpp)antec.push("Comorbidades: nega");
+ else if(hp.length)antec.push("Comorbidades: "+hp.map(o=>o==="Gestante"?o+gestIdadeTexto():o).join(", "));
  if(hpx.length)antec.push("Outros antecedentes: "+hpx.map(x=>x.replace(/^[-*]\s*/,"")).join(", "));
- if(E.alergias)antec.push("Alergias = "+E.alergias);
- if(E.medsUso)antec.push("Medicações em uso = "+E.medsUso);
+ SOCIAL.forEach(o=>{
+  if(E.social[o]==="PRESENTE")antec.push(o+" = presente");
+  else if(E.social[o]==="NEGA")antec.push(o+" = nega");
+ });
+ if(E.negaAlergias)antec.push("Alergia a medicamentos = nega");
+ else if(E.alergias)antec.push("Alergia a medicamentos = "+E.alergias);
+ if(E.negaMeds)antec.push("Medicações em uso = nega");
+ else if(E.medsUso)antec.push("Medicações em uso = "+E.medsUso);
  if(E.cirurgias)antec.push("Cirurgias prévias = "+E.cirurgias);
  if(antec.length){L.push("## ANTECEDENTES:");antec.forEach(x=>L.push(x));L.push("");}
 
@@ -433,7 +477,14 @@ function acao(a){
 const F=$("#form");
 function inputChange(e){
  const t=e.target,d=t.dataset;
- if(d.in){E[d.in]=t.value;gerar();return;}
+ if(d.in){
+  E[d.in]=t.value;
+  /* escrever no campo é afirmar o achado (alergia / medicação em uso): invalida um
+     "Nega" anterior, mesma lógica já usada no detalhe dos sinais de alerta */
+  if(d.in==="alergias"&&t.value.trim()&&E.negaAlergias){E.negaAlergias=false;render();return;}
+  if(d.in==="medsUso"&&t.value.trim()&&E.negaMeds){E.negaMeds=false;render();return;}
+  gerar();return;
+ }
  if(!d.par)return;
  E[d.par][d.key]=t.value;
  /* editar à mão desliga o marcador "Normal"; só o render() redesenha o botão, senão
@@ -451,11 +502,25 @@ F.addEventListener("input",inputChange);
 F.addEventListener("change",inputChange);
 F.addEventListener("click",function(e){
  const b=e.target.closest("button");if(!b)return;const d=b.dataset;
- if(d.map)E[d.map][d.key]=!E[d.map][d.key];
+ if(d.map){
+  E[d.map][d.key]=!E[d.map][d.key];
+  /* marcar qualquer comorbidade contradiz um "Nega comorbidades" ativo — mesma exclusão
+     mútua já usada entre o detalhe e o estado dos sinais de alerta */
+  if(d.map==="hpp"){
+   if(E.hpp[d.key])E.negaHpp=false;
+   if(d.key==="Gestante"&&!E.hpp[d.key])E.gestIdade={semanas:"",dias:""};
+  }
+ }
  /* o detalhe descrevia o achado no estado anterior; trocar o estado invalida a descrição.
     Mantê-la faria o prontuário negar um achado com a descrição do achado presente. */
  else if(d.tri){E[d.tri][d.key]=(E[d.tri][d.key]===d.v?"":d.v);
   if(d.tri==="alertas")E.alertaDet[d.key]="";}
+ else if(d.bool){
+  E[d.bool]=!E[d.bool];
+  if(d.bool==="negaHpp"&&E.negaHpp){COMORB.forEach(o=>delete E.hpp[o]);E.gestIdade={semanas:"",dias:""};}
+  if(d.bool==="negaAlergias"&&E.negaAlergias)E.alergias="";
+  if(d.bool==="negaMeds"&&E.negaMeds)E.medsUso="";
+ }
  else if(d.recolher)E.recolhido[d.recolher]=!E.recolhido[d.recolher];
  else if(d.normal){const k=d.normal;E.exameNormal[k]=!E.exameNormal[k];
   const it=EXAME_ITENS.find(x=>x.k===k);
@@ -469,8 +534,10 @@ $("#sexo").addEventListener("click",function(e){
  E.sexo=b.dataset.s;
  /* some da tela e também do estado: senão um "Gestante" marcado antes da troca
     continuaria saindo no texto de um paciente masculino */
- if(E.sexo!=="F")Object.keys(SO_FEMININO).forEach(k=>{
-  delete E.hpp[k];delete E.alertas[k];delete E.alertaDet[k];});
+ if(E.sexo!=="F"){
+  Object.keys(SO_FEMININO).forEach(k=>{delete E.hpp[k];delete E.alertas[k];delete E.alertaDet[k];});
+  E.gestIdade={semanas:"",dias:""};
+ }
  resyncExameNormal();
  render();});
 ["nome","idade","hora"].forEach(function(k){
