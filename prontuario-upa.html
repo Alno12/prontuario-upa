@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atendimento UPA · registro SOAP</title>
+<style>
+:root{
+  --tinta:#16212B; --tinta2:#53646F; --tinta3:#8496A0;
+  --papel:#EDF1F0; --card:#FFFFFF; --linha:#D5DEDB; --linha2:#E9EEEC;
+  --petroleo:#0E5C63; --petroleo-esc:#083F44; --petroleo-luz:#E0EFEF;
+  --brasa:#A6352A; --brasa-luz:#FBEAE7;
+  --ambar:#8C6100; --ambar-luz:#FBF1DC;
+  --ui:"Bahnschrift","DIN Alternate","Segoe UI Semibold","Inter",system-ui,sans-serif;
+  --corpo:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Mono","Consolas",ui-monospace,"SF Mono","Menlo",monospace;
+  --r:7px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--papel);color:var(--tinta);font-family:var(--corpo);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--petroleo);outline-offset:2px;border-radius:3px}
+
+.topo{position:sticky;top:0;z-index:40;background:var(--tinta);color:#EAF0EF;display:flex;align-items:center;
+ gap:16px;padding:9px 16px;flex-wrap:wrap;border-bottom:3px solid var(--petroleo)}
+.marca{font-family:var(--ui);font-size:15px;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.marca span{color:#7FC0BF;font-weight:400}
+.topo .espaco{flex:1}
+.segm{display:flex;border:1px solid #45555F;border-radius:var(--r);overflow:hidden}
+.segm button{background:transparent;border:0;color:#B7C6CC;padding:5px 13px;cursor:pointer;font-family:var(--ui);letter-spacing:.04em;font-size:13px}
+.segm button[aria-pressed="true"]{background:var(--petroleo);color:#fff}
+.btn-fantasma{background:transparent;border:1px solid #45555F;color:#B7C6CC;padding:5px 11px;border-radius:var(--r);
+ cursor:pointer;font-family:var(--ui);letter-spacing:.04em;font-size:13px}
+.btn-fantasma:hover{border-color:#7FC0BF;color:#fff}
+
+.ident{background:var(--card);border-bottom:1px solid var(--linha);padding:11px 16px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.campo{display:flex;flex-direction:column;gap:3px}
+.campo>label{font-family:var(--ui);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tinta2)}
+.campo input,.campo select,.campo textarea{border:1px solid var(--linha);border-radius:var(--r);padding:6px 9px;background:#FCFDFD}
+.campo input:focus,.campo select:focus,.campo textarea:focus{border-color:var(--petroleo);background:#fff}
+
+.palco{display:grid;grid-template-columns:minmax(0,1fr) 452px;gap:16px;padding:16px;align-items:start;max-width:1620px;margin:0 auto}
+@media(max-width:1120px){.palco{grid-template-columns:1fr;padding:12px}}
+
+.bloco{background:var(--card);border:1px solid var(--linha);border-radius:10px;margin-bottom:13px;overflow:hidden}
+.bloco>header{display:flex;align-items:center;gap:10px;padding:8px 13px;border-bottom:1px solid var(--linha2);
+ background:linear-gradient(var(--card),#F7FAF9)}
+.bloco>header h2{margin:0;font-family:var(--ui);font-size:12.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:600}
+.bloco>header .soap{font-family:var(--ui);font-size:12px;color:#fff;background:var(--cf,var(--petroleo));width:21px;height:21px;
+ border-radius:5px;display:grid;place-items:center;flex:none}
+.bloco>header .dica{margin-left:auto;font-size:11.5px;color:var(--tinta3);display:flex;gap:7px;align-items:center}
+.bloco .corpo{padding:11px 13px}
+.mini{font-size:11.5px;color:var(--tinta2);margin:0 0 8px}
+.grade{display:flex;flex-wrap:wrap;gap:11px}
+textarea{border:1px solid var(--linha);border-radius:var(--r);padding:7px 9px;width:100%;background:#FCFDFD;resize:vertical;min-height:38px;line-height:1.45}
+textarea.codigo{font-family:var(--mono);font-size:12.5px;line-height:1.5;min-height:76px}
+
+.toggles{display:flex;flex-wrap:wrap;gap:6px}
+.tg{border:1px solid var(--linha);background:#FAFCFB;border-radius:var(--r);padding:5px 11px;cursor:pointer;color:var(--tinta2);
+ display:inline-flex;align-items:center;gap:7px;transition:all .12s;text-align:left}
+.tg:hover{border-color:var(--tinta3)}
+.tg .mark{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--linha);flex:none;position:relative}
+.tg[aria-pressed="true"]{background:var(--brasa-luz);border-color:var(--brasa);color:var(--brasa);font-weight:600}
+.tg[aria-pressed="true"] .mark{background:var(--brasa);border-color:var(--brasa)}
+.tg[aria-pressed="true"] .mark::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg)}
+.tg.verde[aria-pressed="true"]{background:var(--petroleo-luz);border-color:var(--petroleo);color:var(--petroleo-esc)}
+.tg.verde[aria-pressed="true"] .mark{background:var(--petroleo);border-color:var(--petroleo)}
+.pilulas{display:flex;flex-wrap:wrap;gap:6px}
+.pil{border:1px solid var(--linha);background:#FAFCFB;border-radius:20px;padding:5px 13px;cursor:pointer;color:var(--tinta2)}
+.pil[aria-pressed="true"]{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.pil:hover{border-color:var(--tinta3)}
+
+/* pares chave = valor */
+.pares{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px 12px}
+.par{display:flex;align-items:center;gap:7px;min-width:0}
+.par label{font-family:var(--ui);font-size:10.5px;letter-spacing:.05em;color:var(--tinta2);flex:0 0 105px;text-align:right;line-height:1.15}
+.par input{flex:1;min-width:0;border:1px solid var(--linha2);border-radius:5px;padding:4px 8px;background:#FBFDFC}
+.par input:focus{border-color:var(--petroleo);background:#fff}
+.par input:placeholder-shown{background:#F4F7F6;color:var(--tinta3)}
+.cx,.par label,.linha-alerta .rot-alerta,.linha-exame .rot-exame{text-transform:uppercase}
+
+.linha-alerta,.linha-exame{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:6px}
+.linha-alerta .rot-alerta,.linha-exame .rot-exame{font-family:var(--ui);font-size:12px;letter-spacing:.04em;color:var(--tinta2);flex:0 0 210px}
+.linha-alerta .pil{padding:4px 11px;font-size:12.5px}
+.linha-alerta .pil[data-v="PRESENTE"][aria-pressed="true"]{background:var(--brasa);border-color:var(--brasa);color:#fff}
+.linha-alerta .pil[data-v="AUSENTE"][aria-pressed="true"]{background:var(--petroleo);border-color:var(--petroleo);color:#fff}
+@media(max-width:640px){.linha-alerta .rot-alerta,.linha-exame .rot-exame{flex:1 0 100%}}
+
+input::placeholder,textarea::placeholder{color:#C9D4D8;opacity:1}
+input::-webkit-input-placeholder,textarea::-webkit-input-placeholder{color:#C9D4D8}
+
+.btn-mini{background:#FAFCFB;border:1px solid var(--linha);border-radius:var(--r);padding:4px 10px;cursor:pointer;
+ font-family:var(--ui);font-size:12px;color:var(--petroleo)}
+.btn-mini:hover{background:var(--petroleo-luz);border-color:var(--petroleo)}
+
+.previa{position:sticky;top:62px;background:var(--tinta);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 78px)}
+@media(max-width:1120px){.previa{position:static;max-height:none}}
+.previa header{display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid #2C3B45;flex-wrap:wrap}
+.previa header h2{margin:0;font-family:var(--ui);font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:#8FC8C6}
+.previa .opts{margin-left:auto;display:flex;gap:5px}
+.opt{background:transparent;border:1px solid #3B4B55;color:#9FB2BA;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11.5px}
+.opt[aria-pressed="true"]{background:#7FC0BF;border-color:#7FC0BF;color:#14202B;font-weight:600}
+#saida{flex:1;overflow:auto;margin:0;padding:12px;font-family:var(--mono);font-size:12.2px;line-height:1.5;color:#DCE7E6;
+ white-space:pre-wrap;word-break:break-word;background:#111B23}
+.previa footer{padding:9px 12px;display:flex;gap:8px;align-items:center;border-top:1px solid #2C3B45}
+.btn-copiar{flex:1;background:var(--petroleo);color:#fff;border:0;border-radius:var(--r);padding:11px;cursor:pointer;
+ font-family:var(--ui);font-size:14px;letter-spacing:.07em;text-transform:uppercase}
+.btn-copiar:hover{background:#12747C}
+.btn-copiar.feito{background:#1B7F63}
+.contador{font-size:11px;color:#7C919B;font-family:var(--mono)}
+.rodape{max-width:1620px;margin:0 auto;padding:2px 16px 28px;color:var(--tinta3);font-size:11.5px}
+.rodape b{color:var(--tinta2)}
+</style>
+</head>
+<body>
+<div class="topo">
+  <div class="marca">Atendimento UPA <span>· SOAP</span></div>
+  <div class="segm" id="sexo"><button data-s="F" aria-pressed="true">Feminino</button><button data-s="M" aria-pressed="false">Masculino</button></div>
+  <div class="espaco"></div>
+  <button class="btn-fantasma" id="btnLimpar">Limpar tudo</button>
+</div>
+<div class="ident">
+  <div class="campo"><label for="nome">Nome / iniciais</label><input id="nome" style="width:180px" placeholder="opcional" autocomplete="off"></div>
+  <div class="campo"><label for="idade">Idade</label><input id="idade" style="width:110px" placeholder="34 anos" autocomplete="off"></div>
+  <div class="campo"><label for="hora">Hora de atendimento</label><input id="hora" type="time" style="width:110px"></div>
+</div>
+<div class="palco">
+  <div id="form"></div>
+  <div class="previa">
+    <header><h2>Prévia do prontuário</h2>
+      <div class="opts">
+        <button class="opt" id="optCaixa" aria-pressed="true" title="Tudo em maiúsculas, como você digita">CAIXA ALTA</button>
+        <button class="opt" id="optAcento" aria-pressed="false" title="Para prontuários que embaralham acentos">Sem acento</button>
+      </div></header>
+    <pre id="saida"></pre>
+    <footer><button class="btn-copiar" id="btnCopiar">Copiar para o prontuário</button><span class="contador" id="contador">0</span></footer>
+  </div>
+</div>
+<div class="rodape">
+  Registro rápido de atendimento em UPA/Pronto Atendimento — anamnese, exame físico e conduta.
+  <b>Nada é salvo</b> — fechou a aba, os dados somem.
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const linhas=t=>String(t||"").split("\n").map(s=>s.trim()).filter(Boolean);
+const bullet=x=>x.charAt(0)==="-"||x.charAt(0)==="*"?x:"- "+x;
+const hoje=new Date().toISOString().slice(0,10);
+
+/* ===== SINAIS DE ALERTA (gerais/adulto, foco em urgência) ===== */
+const ALERTAS=["Dor torácica típica ou opressiva","Dispneia importante / SatO2 baixa","Rebaixamento do nível de consciência",
+ "Sinais de choque (hipotensão, taquicardia, extremidades frias)","Sangramento ativo importante","Cefaleia súbita e intensa (\"a pior da vida\")",
+ "Déficit neurológico focal agudo","Febre associada a rigidez de nuca ou petéquias","Dor abdominal intensa com sinais de irritação peritoneal",
+ "Sinais de gravidade em gestante"];
+
+/* ===== COMORBIDADES ===== */
+const COMORB=["Hipertensão","Diabetes","Cardiopatia","Asma/DPOC","Tabagismo","Etilismo","Gestante"];
+
+/* ===== EXAME FÍSICO, POR LINHA ===== */
+const EXAME_ITENS=[
+ {k:"consc",r:"Nível de consciência",n:()=>"Consciente, orientado em tempo e espaço, Glasgow 15"},
+ {k:"ausc",r:"Ausculta cardíaca",n:()=>"BNF R 2T SS"},
+ {k:"resp",r:"Ausculta respiratória",n:()=>"MV+ bilateral, sem ruídos adventícios"},
+ {k:"abdome",r:"Abdome",n:()=>"Abdome plano, flácido, indolor à palpação, RHA+, sem massas ou visceromegalias"},
+ {k:"extrem",r:"Extremidades / perfusão",n:()=>"Extremidades quentes, perfusão capilar < 2s, pulsos periféricos palpáveis e simétricos, sem edemas"},
+ {k:"pele",r:"Pele e mucosas",n:()=>"Pele íntegra, sem lesões, mucosas úmidas"},
+ {k:"orofaringe",r:"Orofaringe",n:()=>"Orofaringe sem hiperemia ou exsudatos"},
+ {k:"otoscopia",r:"Otoscopia",n:()=>"Otoscopia sem alterações bilateralmente"},
+ {k:"neuro",r:"Neurológico",n:()=>"Sem déficits motores ou sensitivos focais, força e sensibilidade preservadas"},
+ {k:"coluna",r:"Coluna / lombar",n:()=>"Sem dor à palpação de coluna, Giordano negativo"},
+ {k:"geral",r:"Estado geral"}];
+const GERAL_ADJ=[["hidratado","Hidratado","Hidratada"],["corado","Corado","Corada"],
+ ["anicterico","Anictérico","Anictérica"],["acianotico","Acianótico","Acianótica"]];
+function linhaGeral(){
+ const fem=E.sexo==="F";
+ const on=GERAL_ADJ.filter(a=>E.geralCk[a[0]]).map(a=>(fem?a[2]:a[1]).toLowerCase());
+ const comp=(E.exameTxt.geral||"").trim();
+ if(!on.length&&!comp)return null;
+ const frase=on.join(", ");
+ const valor=on.length?(frase.charAt(0).toUpperCase()+frase.slice(1)+(comp?" - "+comp:"")):comp;
+ return "Estado geral = "+valor;
+}
+function linhaExameItem(it){
+ if(it.k==="geral")return linhaGeral();
+ const txt=(E.exameTxt[it.k]||"").trim();
+ if(!txt)return null;
+ return it.r+" = "+txt;
+}
+function resyncExameNormal(){
+ EXAME_ITENS.forEach(it=>{
+  if(it.k==="geral"||!it.n)return;
+  if(E.exameNormal[it.k])E.exameTxt[it.k]=it.n();
+ });
+}
+function linhasExameFisico(){
+ const L=[];
+ EXAME_ITENS.forEach(it=>{const l=linhaExameItem(it);if(l!=null)L.push(l);});
+ linhas(E.exameObs).forEach(x=>L.push(x));
+ return L;
+}
+
+/* ===== SINAIS VITAIS ===== */
+const VITAIS=[{k:"pa",r:"PA",ph:"120x80",un:"mmHg"},{k:"fc",r:"FC",ph:"78",un:"bpm"},
+ {k:"fr",r:"FR",ph:"16",un:"irpm"},{k:"tax",r:"Tax",ph:"36,5",un:"°C"},
+ {k:"spo2",r:"SatO2",ph:"98",un:"%"},{k:"hgt",r:"HGT",ph:"92",un:"mg/dL"},{k:"dor",r:"Dor (EVA)",ph:"0",un:"/10"}];
+
+/* ===== ESTADO ===== */
+let E={};
+function zerar(){E={sexo:E.sexo||"F",nome:"",idade:"",hora:"",
+ queixa:"",hpp:{},hppTxt:"",alergias:"",medsUso:"",cirurgias:"",
+ alertas:{},alertaDet:{},alertaExtra:"",
+ vitais:{},
+ exameTxt:{},exameNormal:{},geralCk:{},exameObs:"",
+ hipoteses:"",conduta:{},condutaTxt:"",desfecho:"",retorno:"",
+ caixaAlta:E.caixaAlta!==false,semAcento:!!E.semAcento};}
+zerar();
+
+/* ===== CONSTRUTORES ===== */
+let nB=0;
+function bloco(soap,tit,dica,html,cor){nB++;
+ return '<section class="bloco" style="--cf:var('+(cor||"--petroleo")+')"><header><span class="soap">'+soap+
+ '</span><h2>'+tit+'</h2>'+(dica?'<span class="dica">'+dica+'</span>':'')+'</header><div class="corpo">'+html+'</div></section>';}
+function ta(k,rot,ph,cls){return '<div class="campo" style="flex:1;min-width:250px">'+(rot?'<label for="i_'+k+'">'+rot+'</label>':'')+
+ '<textarea id="i_'+k+'" class="'+(cls||"")+'" data-in="'+k+'" data-foco="'+k+'" placeholder="'+esc(ph||"")+'">'+esc(E[k])+'</textarea></div>';}
+function inp(k,rot,ph,larg){return '<div class="campo"><label for="i_'+k+'">'+rot+'</label><input id="i_'+k+'" data-in="'+k+
+ '" data-foco="'+k+'" value="'+esc(E[k])+'" placeholder="'+esc(ph||"")+'" style="width:'+(larg||140)+'px" autocomplete="off"></div>';}
+
+function bQueixa(){
+ const h='<div class="grade">'+ta("queixa","","- mãe refere choro excessivo à noite","codigo")+'</div>';
+ return bloco("S","Queixa principal e HDA","história da doença atual",h);
+}
+function bAntecedentes(){
+ let h='<p class="mini">Comorbidades — marca o que se aplica</p>'+
+  '<div class="toggles">'+COMORB.map(o=>'<button class="tg cx" data-map="hpp" data-key="'+esc(o)+
+   '" aria-pressed="'+(E.hpp[o]?"true":"false")+'"><span class="mark"></span>'+esc(o)+'</button>').join("")+'</div>'+
+  '<div class="grade" style="margin-top:10px">'+ta("hppTxt","Outros antecedentes","- outras comorbidades relevantes","codigo")+'</div>'+
+  '<div class="pares" style="margin-top:10px">'+
+   '<div class="par"><label for="i_alergias">Alergias</label><input id="i_alergias" data-in="alergias" data-foco="alergias" value="'+esc(E.alergias)+'" placeholder="nega / qual" autocomplete="off"></div>'+
+   '<div class="par"><label for="i_medsUso">Medicações em uso</label><input id="i_medsUso" data-in="medsUso" data-foco="medsUso" value="'+esc(E.medsUso)+'" placeholder="nega / quais" autocomplete="off"></div>'+
+   '<div class="par"><label for="i_cirurgias">Cirurgias prévias</label><input id="i_cirurgias" data-in="cirurgias" data-foco="cirurgias" value="'+esc(E.cirurgias)+'" placeholder="nega / quais" autocomplete="off"></div>'+
+  '</div>';
+ return bloco("S","Antecedentes","campo vazio não sai no texto",h);
+}
+function bAlerta(){
+ const n=ALERTAS.filter(x=>E.alertas[x]==="PRESENTE").length;
+ let h='<p class="mini"><b>## SINAIS DE ALERTA:</b> — só sai no texto o que for marcado</p>'+
+  '<div style="margin-bottom:10px"><button class="btn-mini" data-acao="todosAusentes">Todos ausentes</button> '+
+  '<button class="btn-mini" data-acao="limpaAlertas">Limpar</button></div>';
+ h+=ALERTAS.map(function(o,i){
+  const v=E.alertas[o]||"";
+  return '<div class="linha-alerta">'+
+   '<span class="rot-alerta">'+esc(o)+'</span>'+
+   '<div class="pilulas"><button class="pil" data-tri="alertas" data-key="'+esc(o)+'" data-v="PRESENTE" aria-pressed="'+(v==="PRESENTE"?"true":"false")+'">PRESENTE</button>'+
+   '<button class="pil" data-tri="alertas" data-key="'+esc(o)+'" data-v="AUSENTE" aria-pressed="'+(v==="AUSENTE"?"true":"false")+'">AUSENTE</button></div>'+
+   '<input data-par="alertaDet" data-key="'+esc(o)+'" data-foco="alertaDet'+i+'" value="'+esc(E.alertaDet[o]||"")+
+    '" placeholder="informações adicionais" style="flex:1;min-width:170px;border:1px solid var(--linha);border-radius:var(--r);padding:4px 9px" autocomplete="off">'+
+   '</div>';
+ }).join("");
+ h+='<div class="grade" style="margin-top:10px">'+ta("alertaExtra","Outros sinais de alerta presentes","- sinal fora da lista","codigo")+'</div>';
+ return bloco("S","Sinais de alerta",n?'<b style="color:var(--brasa)">'+n+' presente'+(n>1?"s":"")+'</b>':"nenhum presente",h);
+}
+function bVitais(){
+ const h='<div class="pares">'+VITAIS.map(v=>
+  '<div class="par"><label for="i_v_'+v.k+'">'+v.r+'</label><input id="i_v_'+v.k+'" data-par="vitais" data-key="'+v.k+
+   '" data-foco="v'+v.k+'" value="'+esc(E.vitais[v.k]||"")+'" placeholder="'+v.ph+'" autocomplete="off">'+
+   '<span style="color:var(--tinta3);font-size:11.5px">'+v.un+'</span></div>').join("")+'</div>';
+ return bloco("O","Sinais vitais","campo vazio não sai no texto",h);
+}
+function linhaExameCampo(it){
+ if(it.k==="geral")
+  return '<div class="linha-exame">'+
+   '<span class="rot-exame">'+esc(it.r)+'</span>'+
+   '<div class="pilulas">'+GERAL_ADJ.map(a=>'<button class="tg verde cx" data-map="geralCk" data-key="'+a[0]+
+    '" aria-pressed="'+(E.geralCk[a[0]]?"true":"false")+'"><span class="mark"></span>'+(E.sexo==="F"?a[2]:a[1])+'</button>').join("")+'</div>'+
+   '<input data-par="exameTxt" data-key="geral" data-foco="exameTxtgeral" value="'+esc(E.exameTxt.geral||"")+
+    '" placeholder="complementar" style="flex:1;min-width:170px;border:1px solid var(--linha);border-radius:var(--r);padding:4px 9px" autocomplete="off">'+
+   '</div>';
+ return '<div class="linha-exame">'+
+  '<span class="rot-exame">'+esc(it.r)+'</span>'+
+  '<button class="tg verde cx" data-normal="'+it.k+'" aria-pressed="'+(E.exameNormal[it.k]?"true":"false")+'"><span class="mark"></span>Normal</button>'+
+  '<input data-par="exameTxt" data-key="'+it.k+'" data-foco="exameTxt'+it.k+'" value="'+esc(E.exameTxt[it.k]||"")+
+   '" placeholder="descreva o achado" style="flex:1;min-width:170px;border:1px solid var(--linha);border-radius:var(--r);padding:4px 9px" autocomplete="off">'+
+  '</div>';
+}
+function bExame(){
+ let h=EXAME_ITENS.map(linhaExameCampo).join("");
+ h+='<div class="grade" style="margin-top:10px">'+ta("exameObs","Outras observações","- reavaliar em 1 hora","codigo")+'</div>';
+ return bloco("O","Exame físico",'<button class="btn-mini" data-acao="resetExame">tudo normal</button> '+
+  '<button class="btn-mini" data-acao="omitirExame">omitir tudo</button>',h);
+}
+function bAval(){
+ const h='<div class="grade">'+ta("hipoteses","","- cefaleia tensional","codigo")+'</div>';
+ return bloco("A","Hipóteses diagnósticas","",h);
+}
+const CONDUTA=["Solicito exames complementares","Prescrevo medicação sintomática","Realizo hidratação venosa",
+ "Encaminho à observação","Encaminho à referência hospitalar","Oriento sinais de alarme para retorno","Alta com orientações"];
+function bPlano(){
+ let h='<div class="toggles">'+CONDUTA.map(o=>'<button class="tg cx" data-map="conduta" data-key="'+esc(o)+
+   '" aria-pressed="'+(E.conduta[o]?"true":"false")+'"><span class="mark"></span>'+esc(o)+'</button>').join("")+'</div>'+
+  '<div class="grade" style="margin-top:10px">'+ta("condutaTxt","Detalhamento da conduta","- dipirona 1g EV, reavaliação em 1h","codigo")+'</div>'+
+  '<div class="pares" style="margin-top:10px">'+
+   '<div class="par"><label for="i_desfecho">Desfecho</label><input id="i_desfecho" data-in="desfecho" data-foco="desfecho" value="'+esc(E.desfecho)+'" placeholder="alta / observação / internação" autocomplete="off"></div>'+
+   '<div class="par"><label for="i_retorno">Retorno</label><input id="i_retorno" data-in="retorno" data-foco="retorno" value="'+esc(E.retorno)+'" placeholder="se piora, ou em 48h" autocomplete="off"></div>'+
+  '</div>';
+ return bloco("P","Conduta","",h);
+}
+
+/* ===== GERAÇÃO DO TEXTO ===== */
+function gerarTexto(){
+ const L=[];
+ const idHora=[E.nome,E.idade].filter(Boolean).join(", ");
+ if(idHora||E.hora){L.push([idHora,E.hora?"Horário: "+E.hora:""].filter(Boolean).join(" — "));L.push("");}
+
+ L.push("S");
+ if(E.queixa){L.push("## QUEIXA PRINCIPAL E HDA:");linhas(E.queixa).forEach(x=>L.push(x));L.push("");}
+
+ const hp=COMORB.filter(o=>E.hpp[o]),hpx=linhas(E.hppTxt);
+ const antec=[];
+ if(hp.length||hpx.length)antec.push("Comorbidades: "+hp.concat(hpx.map(x=>x.replace(/^[-*]\s*/,""))).join(", "));
+ if(E.alergias)antec.push("Alergias = "+E.alergias);
+ if(E.medsUso)antec.push("Medicações em uso = "+E.medsUso);
+ if(E.cirurgias)antec.push("Cirurgias prévias = "+E.cirurgias);
+ if(antec.length){L.push("## ANTECEDENTES:");antec.forEach(x=>L.push(x));L.push("");}
+
+ const on=ALERTAS.filter(x=>E.alertas[x]==="PRESENTE").map(x=>x+(E.alertaDet[x]?" - "+E.alertaDet[x]:""))
+   .concat(linhas(E.alertaExtra).map(x=>x.replace(/^[-*]\s*/,"")));
+ const off=ALERTAS.filter(x=>E.alertas[x]==="AUSENTE").map(x=>x+(E.alertaDet[x]?" - "+E.alertaDet[x]:""));
+ const minusc=s=>s.charAt(0).toLowerCase()+s.slice(1);
+ if(on.length||off.length){
+  L.push("## SINAIS DE ALERTA:");
+  if(off.length)L.push("Nega "+off.map(minusc).join(", ")+".");
+  if(on.length){if(off.length)L.push("");L.push("Sinais de alerta presentes = "+on.join(", ")+".");}
+  L.push("");
+ }
+
+ L.push("O");
+ const vt=VITAIS.filter(v=>E.vitais[v.k]);
+ if(vt.length){L.push(vt.map(v=>v.r+" = "+E.vitais[v.k]+" "+v.un).join(" | "));L.push("");}
+ L.push.apply(L,linhasExameFisico());
+ L.push("");
+
+ L.push("A");
+ if(E.hipoteses)linhas(E.hipoteses).forEach(x=>L.push(bullet(x)));
+ else L.push("- Hipóteses diagnósticas a definir");
+ L.push("");
+
+ L.push("P");
+ Object.keys(E.conduta).filter(k=>E.conduta[k]).forEach(x=>L.push("- "+x));
+ linhas(E.condutaTxt).forEach(x=>L.push(bullet(x)));
+ if(E.desfecho)L.push("- Desfecho: "+E.desfecho);
+ if(E.retorno)L.push("- Retorno: "+E.retorno);
+ L.push("");
+
+ return L.join("\n");
+}
+function caixaAlta(t){return t.toUpperCase();}
+function gerar(){
+ let t=gerarTexto();
+ if(E.caixaAlta)t=caixaAlta(t);
+ if(E.semAcento)t=t.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[\u2212\u2013\u2014·]/g,x=>x==="·"?"|":"-");
+ $("#saida").textContent=t;$("#contador").textContent=t.length+" car.";
+}
+
+/* ===== RENDER ===== */
+function render(){
+ const at=document.activeElement,fo=at&&at.dataset?at.dataset.foco:null,pos=at&&at.selectionStart!=null?at.selectionStart:null;
+ nB=0;
+ $("#form").innerHTML=bQueixa()+bAntecedentes()+bAlerta()+bVitais()+bExame()+bAval()+bPlano();
+ if(fo){const el=$('#form [data-foco="'+fo+'"]');if(el){el.focus();
+  if(pos!=null&&el.setSelectionRange)try{el.setSelectionRange(pos,pos)}catch(e){}}}
+ gerar();
+}
+
+/* ===== AÇÕES E EVENTOS ===== */
+function acao(a){
+ if(a==="resetExame"){
+  EXAME_ITENS.forEach(it=>{if(it.k!=="geral"){E.exameNormal[it.k]=true;E.exameTxt[it.k]=it.n();}});
+  E.exameTxt.geral="";
+  GERAL_ADJ.forEach(g=>E.geralCk[g[0]]=true);}
+ if(a==="omitirExame"){EXAME_ITENS.forEach(it=>{if(it.k!=="geral"){E.exameNormal[it.k]=false;E.exameTxt[it.k]="";}});
+  E.exameTxt.geral="";
+  GERAL_ADJ.forEach(g=>E.geralCk[g[0]]=false);}
+ if(a==="todosAusentes")ALERTAS.forEach(x=>{if(E.alertas[x]!=="PRESENTE")E.alertas[x]="AUSENTE";});
+ if(a==="limpaAlertas"){E.alertas={};E.alertaDet={};}
+}
+const F=$("#form");
+function inputChange(e){
+ const t=e.target,d=t.dataset;
+ if(d.in){E[d.in]=t.value;gerar();}
+ else if(d.par){E[d.par][d.key]=t.value;if(d.par==="exameTxt")E.exameNormal[d.key]=false;gerar();}
+}
+F.addEventListener("input",inputChange);
+F.addEventListener("change",inputChange);
+F.addEventListener("click",function(e){
+ const b=e.target.closest("button");if(!b)return;const d=b.dataset;
+ if(d.map)E[d.map][d.key]=!E[d.map][d.key];
+ else if(d.tri)E[d.tri][d.key]=(E[d.tri][d.key]===d.v?"":d.v);
+ else if(d.normal){const k=d.normal;E.exameNormal[k]=!E.exameNormal[k];
+  const it=EXAME_ITENS.find(x=>x.k===k);
+  E.exameTxt[k]=E.exameNormal[k]?it.n():"";}
+ else if(d.acao)acao(d.acao);
+ else return;
+ render();
+});
+$("#sexo").addEventListener("click",function(e){
+ const b=e.target.closest("button[data-s]");if(!b)return;E.sexo=b.dataset.s;
+ [].forEach.call(this.querySelectorAll("button"),x=>x.setAttribute("aria-pressed",x===b?"true":"false"));
+ resyncExameNormal();
+ render();});
+["nome","idade","hora"].forEach(function(k){
+ const el=document.getElementById(k);el.value=E[k]||"";
+ el.addEventListener("input",function(){E[k]=el.value;gerar();});});
+$("#btnLimpar").addEventListener("click",function(){
+ if(confirm("Limpar todos os campos?")){zerar();
+  ["nome","idade","hora"].forEach(k=>document.getElementById(k).value="");
+  $("#sexo").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.s==="F"?"true":"false"));
+  render();}});
+$("#optCaixa").addEventListener("click",function(){E.caixaAlta=!E.caixaAlta;this.setAttribute("aria-pressed",E.caixaAlta);gerar();});
+$("#optAcento").addEventListener("click",function(){E.semAcento=!E.semAcento;this.setAttribute("aria-pressed",E.semAcento);gerar();});
+$("#btnCopiar").addEventListener("click",function(){
+ navigator.clipboard.writeText($("#saida").textContent).then(()=>{
+  this.classList.add("feito");this.textContent="Copiado!";
+  setTimeout(()=>{this.classList.remove("feito");this.textContent="Copiar para o prontuário";},1400);
+ });});
+
+render();
+</script>
+</body>
+</html>
