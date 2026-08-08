@@ -377,6 +377,140 @@ async function main() {
     await p.close();
   }
 
+  // ---------- T16: Asma/DPOC separados, Dislipidemia presente ----------
+  {
+    const p = await freshPage(browser, "T16");
+    await desligarCaixaAlta(p);
+    const temAsma = await p.locator('[data-map="hpp"][data-key="Asma"]').count();
+    const temDpoc = await p.locator('[data-map="hpp"][data-key="DPOC"]').count();
+    const temCombinado = await p.locator('[data-map="hpp"][data-key="Asma/DPOC"]').count();
+    const temDislipidemia = await p.locator('[data-map="hpp"][data-key="Dislipidemia"]').count();
+    await p.locator('[data-map="hpp"][data-key="Asma"]').click();
+    const saida = await p.locator("#saida").textContent();
+    const soAsma = saida.includes("Comorbidades: Asma") && !saida.includes("DPOC");
+    const pass = temAsma === 1 && temDpoc === 1 && temCombinado === 0 && temDislipidemia === 1 && soAsma;
+    reg("T16", "Asma e DPOC são marcadores separados; Dislipidemia existe",
+      pass, { temAsma, temDpoc, temCombinado, temDislipidemia, saida });
+    await p.close();
+  }
+
+  // ---------- T17: Nega comorbidades — exclusão mútua ----------
+  {
+    const p = await freshPage(browser, "T17");
+    await desligarCaixaAlta(p);
+    await p.locator('[data-map="hpp"][data-key="Hipertensão"]').click();
+    await p.locator('[data-bool="negaHpp"]').click();
+    const hipertAria = await p.locator('[data-map="hpp"][data-key="Hipertensão"]').getAttribute("aria-pressed");
+    const saidaNega = await p.locator("#saida").textContent();
+    const negaLimpouMarca = hipertAria === "false" && saidaNega.includes("Comorbidades: nega");
+
+    await p.locator('[data-map="hpp"][data-key="Diabetes"]').click();
+    const negaAria = await p.locator('[data-bool="negaHpp"]').getAttribute("aria-pressed");
+    const saidaDepois = await p.locator("#saida").textContent();
+    const marcarDesligouNega = negaAria === "false" && saidaDepois.includes("Comorbidades: Diabetes") && !saidaDepois.includes("nega");
+
+    const pass = negaLimpouMarca && marcarDesligouNega;
+    reg("T17", "Nega comorbidades é mutuamente exclusivo com marcas individuais",
+      pass, { hipertAria, saidaNega, negaAria, saidaDepois });
+    await p.close();
+  }
+
+  // ---------- T18: Tabagismo/Etilismo tri-state, fora da grade de comorbidades ----------
+  {
+    const p = await freshPage(browser, "T18");
+    await desligarCaixaAlta(p);
+    const foraDaGrade = await p.locator('.toggles [data-key="Tabagismo"]').count();
+    await p.locator('[data-tri="social"][data-key="Tabagismo"][data-v="PRESENTE"]').click();
+    await p.locator('[data-tri="social"][data-key="Etilismo"][data-v="NEGA"]').click();
+    const saida = await p.locator("#saida").textContent();
+    const textoOk = saida.includes("Tabagismo = presente") && saida.includes("Etilismo = nega");
+    await p.locator('[data-tri="social"][data-key="Tabagismo"][data-v="PRESENTE"]').click();
+    const saidaDepois = await p.locator("#saida").textContent();
+    const clicarDeNovoDesmarca = !saidaDepois.includes("Tabagismo");
+    const pass = foraDaGrade === 0 && textoOk && clicarDeNovoDesmarca;
+    reg("T18", "Tabagismo/Etilismo são tri-state PRESENTE/NEGA, fora da grade de comorbidades",
+      pass, { foraDaGrade, saida, saidaDepois });
+    await p.close();
+  }
+
+  // ---------- T19: Gestante — caixa de IG ----------
+  {
+    const p = await freshPage(browser, "T19");
+    await desligarCaixaAlta(p);
+    const escondidaAntes = await p.locator("#i_gestSem").isVisible().catch(() => false);
+    await p.locator('[data-map="hpp"][data-key="Gestante"]').click();
+    const visivelDepois = await p.locator("#i_gestSem").isVisible();
+    await p.locator("#i_gestSem").fill("32");
+    await p.locator("#i_gestDia").fill("4");
+    const saidaComIG = await p.locator("#saida").textContent();
+    const igNaSaida = saidaComIG.includes("Gestante (IG 32 semanas e 4 dias)");
+
+    await p.locator('[data-map="hpp"][data-key="Gestante"]').click(); // desmarca
+    await p.locator('[data-map="hpp"][data-key="Gestante"]').click(); // remarca
+    const semanasLimpas = (await p.locator("#i_gestSem").inputValue()) === "";
+
+    await p.locator("#sexo button[data-s=\"M\"]").click();
+    const saidaAposTrocaSexo = await p.locator("#saida").textContent();
+    const gestanteSumiu = !saidaAposTrocaSexo.includes("Gestante");
+    await p.locator("#sexo button[data-s=\"F\"]").click();
+    const naoRemarcaSozinho = !(await p.locator("#i_gestSem").isVisible());
+
+    const pass = escondidaAntes === false && visivelDepois && igNaSaida && semanasLimpas && gestanteSumiu && naoRemarcaSozinho;
+    reg("T19", "Caixa de IG aparece só com Gestante marcado, limpa ao desmarcar/trocar sexo",
+      pass, { escondidaAntes, visivelDepois, saidaComIG, semanasLimpas, saidaAposTrocaSexo, naoRemarcaSozinho });
+    await p.close();
+  }
+
+  // ---------- T20: Alergia a medicamentos — renomeada, com Nega ----------
+  {
+    const p = await freshPage(browser, "T20");
+    await desligarCaixaAlta(p);
+    const rotulo = (await p.locator('label[for="i_alergias"]').textContent()).trim();
+    await p.locator('[data-bool="negaAlergias"]').click();
+    const saidaNega = await p.locator("#saida").textContent();
+    const negaOk = saidaNega.includes("Alergia a medicamentos = nega");
+
+    await p.locator("#i_alergias").fill("dipirona");
+    const negaAriaApos = await p.locator('[data-bool="negaAlergias"]').getAttribute("aria-pressed");
+    const saidaTexto = await p.locator("#saida").textContent();
+    const digitarDesligaNega = negaAriaApos === "false" && saidaTexto.includes("Alergia a medicamentos = dipirona");
+
+    await p.locator('[data-bool="negaAlergias"]').click();
+    const campoLimpo = (await p.locator("#i_alergias").inputValue()) === "";
+
+    const pass = rotulo === "Alergia a medicamentos" && negaOk && digitarDesligaNega && campoLimpo;
+    reg("T20", "Campo renomeado para Alergia a medicamentos, com Nega mutuamente exclusivo",
+      pass, { rotulo, saidaNega, negaAriaApos, saidaTexto, campoLimpo });
+    await p.close();
+  }
+
+  // ---------- T21: Medicações em uso — Nega ----------
+  {
+    const p = await freshPage(browser, "T21");
+    await desligarCaixaAlta(p);
+    await p.locator("#i_medsUso").fill("losartana");
+    await p.locator('[data-bool="negaMeds"]').click();
+    const campoLimpo = (await p.locator("#i_medsUso").inputValue()) === "";
+    const saida = await p.locator("#saida").textContent();
+    const pass = campoLimpo && saida.includes("Medicações em uso = nega");
+    reg("T21", "Nega em Medicações em uso limpa o texto e gera saída",
+      pass, { campoLimpo, saida });
+    await p.close();
+  }
+
+  // ---------- T22: nenhum erro de JS acumulado até aqui ----------
+  {
+    const p = await freshPage(browser, "T22");
+    await desligarCaixaAlta(p);
+    await p.locator('[data-bool="negaHpp"]').click();
+    await p.locator('[data-map="hpp"][data-key="Gestante"]').click();
+    await p.locator('[data-tri="social"][data-key="Tabagismo"][data-v="PRESENTE"]').click();
+    await p.locator("#i_alergias").fill("penicilina");
+    await p.locator('[data-bool="negaAlergias"]').click();
+    reg("T22", "Sequência combinada dos novos controles não gera erro de JS", true, {});
+    await p.close();
+  }
+
   await browser.close();
   srv.close();
 

@@ -87,6 +87,47 @@ mexer no bloco.
 independentes (Hidratado / Corado / Anictérico / Acianótico), para que desmarcar
 um só já registre o achado.
 
+## Silêncio não é "nega": o padrão de negação explícita
+
+Campo vazio já significa "o médico não tocou nisso" — mas não distingue "não
+perguntei" de "perguntei e o paciente nega". Comorbidades, alergia a medicamentos,
+medicações em uso, tabagismo e etilismo têm um botão **Nega** explícito para essa
+segunda situação, e o texto gerado diferencia as duas: campo vazio não aparece,
+"Nega" marcado sai como `Rótulo = nega` (ou `Comorbidades: nega`).
+
+O botão Nega é sempre **mutuamente exclusivo** com o dado positivo, mesma lógica já
+usada entre o detalhe e o estado dos sinais de alerta:
+
+- **Marcar o dado positivo desliga o Nega.** Marcar qualquer comorbidade desliga
+  `E.negaHpp`; escrever em Alergia a medicamentos ou Medicações em uso desliga
+  `E.negaAlergias` / `E.negaMeds` (mesmo handler que já desligava o marcador
+  "Normal" do exame físico ao editar à mão).
+- **Ligar o Nega apaga o dado positivo.** Ativar `E.negaHpp` limpa todas as marcas
+  de `COMORB` (inclusive Gestante, e sua IG); ativar `E.negaAlergias` /
+  `E.negaMeds` limpa o texto do campo correspondente.
+
+Sem essa exclusão, dava pra ter "Hipertensão" marcada e "Comorbidades: nega" saindo
+juntos no mesmo prontuário — a mesma classe de contradição que motivou a regra dos
+sinais de alerta.
+
+**Tabagismo e Etilismo não entram nessa exclusão geral.** Ficaram fora da grade de
+`COMORB` de propósito: `E.negaHpp` (Nega comorbidades) só cobre a lista médica
+(Hipertensão, Diabetes, Dislipidemia, Cardiopatia, Asma, DPOC, Gestante), porque na
+prática é comum marcar "Hipertensão" presente e ainda assim precisar registrar "nega
+tabagismo, nega etilismo" — uma negação geral não serve pra esse caso. Os dois viram
+`E.social{}`, um tri-state próprio (`PRESENTE`/`NEGA`) que reaproveita o mesmo padrão
+de pílulas e o mesmo handler genérico `data-tri` dos sinais de alerta.
+
+## Gestante: idade gestacional é detalhe do achado, não campo à parte
+
+A caixa de semanas/dias (`E.gestIdade`) só aparece na tela quando `Gestante` está
+marcado, e só entra na saída se pelo menos um dos dois campos tiver conteúdo —
+"Gestante" sozinho continua válido, sem IG obrigatória. Desmarcar Gestante limpa
+`E.gestIdade`; marcar de novo começa em branco (idade gestacional muda a cada
+plantão, não é seguro reaproveitar valor antigo). A limpeza ao trocar de sexo para
+Masculino (já existente para `SO_FEMININO`) também zera `E.gestIdade` pelo mesmo
+motivo.
+
 ## Sinais de alerta: o campo de detalhe descreve um achado presente
 
 O campo ao lado de cada alerta não é uma anotação neutra — ele descreve o achado.
