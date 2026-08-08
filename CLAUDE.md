@@ -134,7 +134,9 @@ ser o prontuário do paciente anterior.
    (`chromium-1194/chrome-linux/chrome`) e muda a cada atualização.
    Verificar o texto gerado em `#saida`, não só se a página carrega.
    Cheque `pageerror` — erro de JS silencioso passa despercebido.
-3. **Rodar a regressão**: os testes das mudanças anteriores, não só os da atual.
+3. **Rodar a regressão**: `node testes/regressao.js` (sobe o próprio servidor, sai
+   com código 1 se algum caso falhar). Rode a suíte inteira, não só o caso da
+   mudança da vez — e acrescente um caso novo para cada defeito corrigido.
    Várias regressões reais desta base foram pegas exatamente assim.
 4. Conferência visual por captura de tela quando o layout mudar.
 
