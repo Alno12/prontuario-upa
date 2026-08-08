@@ -372,7 +372,7 @@ function bAval(){
  return bloco("A","Hipóteses diagnósticas","",h,null,"aval");
 }
 const CONDUTA=["Solicito exames","Prescrevo","Orientações","Encaminho à observação",
- "Interno","Contato central de leito","Oriento sinais de alarme","Retorno em caso de piora ou sinais de alarme"];
+ "Interno","Clico central de leitos","Oriento sinais de alarme","Retorno em caso de piora ou sinais de alarme"];
 function bPlano(){
  let h='<div class="toggles">'+CONDUTA.map(o=>'<button class="tg cx" data-map="conduta" data-key="'+esc(o)+
    '" aria-pressed="'+(E.conduta[o]?"true":"false")+'"><span class="mark"></span>'+esc(o)+'</button>').join("")+'</div>'+
