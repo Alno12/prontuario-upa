@@ -511,6 +511,51 @@ async function main() {
     await p.close();
   }
 
+  // ---------- T23: exame físico sai como frase corrida, sem "Rótulo = " ----------
+  {
+    const p = await freshPage(browser, "T23");
+    // CAIXA ALTA fica ligada de propósito, pra comparar com o texto tal como o médico vê na prévia
+    await p.locator('[data-acao="resetExame"]').click();
+    const saida = await p.locator("#saida").textContent();
+    const esperado = [
+      "CONSCIENTE, ORIENTADA EM TEMPO E ESPAÇO, GLASGOW 15",
+      "BNF R 2T SS",
+      "MV+ BILATERAL, SEM RUÍDOS ADVENTÍCIOS",
+      "ABDOME PLANO, FLÁCIDO, INDOLOR À PALPAÇÃO, RHA+, SEM MASSAS OU VISCEROMEGALIAS",
+      "EXTREMIDADES QUENTES, PERFUSÃO CAPILAR < 2S, PULSOS PERIFÉRICOS PALPÁVEIS E SIMÉTRICOS, SEM EDEMAS",
+      "PELE ÍNTEGRA, SEM LESÕES, MUCOSAS ÚMIDAS",
+      "OROFARINGE SEM HIPEREMIA OU EXSUDATOS",
+      "OTOSCOPIA SEM ALTERAÇÕES BILATERALMENTE",
+      "SEM DÉFICITS MOTORES OU SENSITIVOS FOCAIS, FORÇA E SENSIBILIDADE PRESERVADAS",
+      "SEM DOR À PALPAÇÃO DE COLUNA, GIORDANO NEGATIVO",
+      "HIDRATADA, CORADA, ANICTÉRICA, ACIANÓTICA",
+    ].join("\n");
+    const blocoO = saida.split("\nO\n")[1].split("\n\nA\n")[0];
+    const semRotulo = !saida.includes(" = ") || !/Ausculta|Abdome =|Otoscopia =/.test(saida);
+    const rotuloSumiuDaTela = (await p.locator(".rot-exame").count()) === 0;
+    const rotuloAlertaContinua = (await p.locator(".rot-alerta").count()) > 0;
+    const pass = blocoO === esperado && semRotulo && rotuloSumiuDaTela && rotuloAlertaContinua;
+    reg("T23", "Exame físico sai como frase corrida (sem rótulo), rótulo some da tela — alertas mantêm o deles",
+      pass, { blocoO, semRotulo, rotuloSumiuDaTela, rotuloAlertaContinua });
+    await p.close();
+  }
+
+  // ---------- T24: placeholder e aria-label contextuais no lugar do rótulo fixo ----------
+  {
+    const p = await freshPage(browser, "T24");
+    await desligarCaixaAlta(p);
+    const ph = await p.locator('input[data-par="exameTxt"][data-key="ausc"]').getAttribute("placeholder");
+    const ariaInput = await p.locator('input[data-par="exameTxt"][data-key="ausc"]').getAttribute("aria-label");
+    const ariaBtn = await p.locator('[data-normal="ausc"]').getAttribute("aria-label");
+    await p.locator('input[data-par="exameTxt"][data-key="ausc"]').fill("sopro sistólico 2+/6");
+    const saida = await p.locator("#saida").textContent();
+    const achadoSemRotulo = saida.includes("sopro sistólico 2+/6") && !saida.includes("Ausculta cardíaca =");
+    const pass = ph === "Ausculta cardíaca" && !!ariaInput && !!ariaBtn && achadoSemRotulo;
+    reg("T24", "Nome do campo vira placeholder/aria-label; achado digitado sai sem rótulo",
+      pass, { ph, ariaInput, ariaBtn, achadoSemRotulo });
+    await p.close();
+  }
+
   await browser.close();
   srv.close();
 
