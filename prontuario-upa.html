@@ -371,8 +371,8 @@ function bAval(){
  const h='<div class="grade">'+ta("hipoteses","","- cefaleia tensional","codigo")+'</div>';
  return bloco("A","Hipóteses diagnósticas","",h,null,"aval");
 }
-const CONDUTA=["Solicito exames complementares","Prescrevo medicação sintomática","Realizo hidratação venosa",
- "Encaminho à observação","Encaminho à referência hospitalar","Oriento sinais de alarme para retorno","Alta com orientações"];
+const CONDUTA=["Solicito exames","Prescrevo","Orientações","Encaminho à observação",
+ "Interno","Contato central de leito","Oriento sinais de alarme","Retorno em caso de piora ou sinais de alarme"];
 function bPlano(){
  let h='<div class="toggles">'+CONDUTA.map(o=>'<button class="tg cx" data-map="conduta" data-key="'+esc(o)+
    '" aria-pressed="'+(E.conduta[o]?"true":"false")+'"><span class="mark"></span>'+esc(o)+'</button>').join("")+'</div>'+
