@@ -556,6 +556,84 @@ async function main() {
     await p.close();
   }
 
+  // ---------- T25: "exame reduzido" gera exatamente as 6 frases pedidas ----------
+  {
+    const p = await freshPage(browser, "T25");
+    // CAIXA ALTA fica ligada de propósito, pra comparar com o texto tal como o médico vê na prévia
+    await p.locator('[data-acao="exameReduzido"]').click();
+    const saida = await p.locator("#saida").textContent();
+    const esperado = [
+      "CONSCIENTE, ORIENTADA, SEM DÉFICITS FOCAIS EVIDENTES",
+      "BNF R 2T SS",
+      "MV+ BILATERALMENTE, SRA",
+      "ABDOME INOCENTE",
+      "BOA PERFUSÃO PERIFÉRICA",
+      "HIDRATADA, CORADA, ANICTÉRICA, ACIANÓTICA",
+    ].join("\n");
+    const blocoO = saida.split("\nO\n")[1].split("\n\nA\n")[0];
+    const neuroVazio = (await p.locator('input[data-par="exameTxt"][data-key="neuro"]').inputValue()) === "";
+    const colunaVazia = (await p.locator('input[data-par="exameTxt"][data-key="coluna"]').inputValue()) === "";
+    const pass = blocoO === esperado && neuroVazio && colunaVazia;
+    reg("T25", "'Exame reduzido' gera exatamente as 6 frases pedidas; linhas fora do reduzido ficam vazias",
+      pass, { blocoO, neuroVazio, colunaVazia });
+    await p.close();
+  }
+
+  // ---------- T26: concordância de gênero no exame reduzido ----------
+  {
+    const p = await freshPage(browser, "T26");
+    await desligarCaixaAlta(p);
+    await p.locator('#sexo button[data-s="M"]').click();
+    await p.locator('[data-acao="exameReduzido"]').click();
+    const saida = await p.locator("#saida").textContent();
+    const consciencia = (saida.split("\n").find(l => l.startsWith("Consciente")) || "");
+    const geral = (saida.split("\n").find(l => l.startsWith("Hidratado")) || "");
+    const pass = consciencia.includes("orientado") && !consciencia.includes("orientada") && geral !== "";
+    reg("T26", "Exame reduzido concorda com o sexo masculino ('orientado', 'Hidratado')",
+      pass, { consciencia, geral });
+    await p.close();
+  }
+
+  // ---------- T27: "exame reduzido" não deixa resíduo ao alternar com os outros modos ----------
+  {
+    const p = await freshPage(browser, "T27");
+    await desligarCaixaAlta(p);
+    await p.locator('[data-acao="exameReduzido"]').click();
+    await p.locator('[data-acao="resetExame"]').click();
+    const saidaCompleto = await p.locator("#saida").textContent();
+    const semResiduoReduzido = !saidaCompleto.includes("Abdome inocente") && saidaCompleto.includes("Abdome plano, flácido");
+    const normalMarcado = (await p.locator('[data-normal="ausc"]').getAttribute("aria-pressed")) === "true";
+
+    await p.locator('[data-acao="exameReduzido"]').click();
+    await p.locator('[data-acao="omitirExame"]').click();
+    const saidaOmitido = await p.locator("#saida").textContent();
+    const blocoOVazio = /\nO\n\n/.test(saidaOmitido);
+
+    const pass = semResiduoReduzido && normalMarcado && blocoOVazio;
+    reg("T27", "'tudo normal' e 'omitir tudo' sobrescrevem por completo o que 'exame reduzido' deixou",
+      pass, { semResiduoReduzido, normalMarcado, blocoOVazio, saidaCompleto, saidaOmitido });
+    await p.close();
+  }
+
+  // ---------- T28: exame reduzido sobrevive à troca de sexo (não é "Normal") ----------
+  {
+    const p = await freshPage(browser, "T28");
+    await desligarCaixaAlta(p);
+    await p.locator('[data-acao="exameReduzido"]').click();
+    const respAntes = await p.locator('input[data-par="exameTxt"][data-key="resp"]').inputValue();
+    const abdomeAntes = await p.locator('input[data-par="exameTxt"][data-key="abdome"]').inputValue();
+    await p.locator('#sexo button[data-s="M"]').click();
+    const respDepois = await p.locator('input[data-par="exameTxt"][data-key="resp"]').inputValue();
+    const abdomeDepois = await p.locator('input[data-par="exameTxt"][data-key="abdome"]').inputValue();
+    // se exameNormal ficasse true pra essas linhas, resyncExameNormal() trocaria o texto
+    // reduzido pela frase CANÔNICA do exame completo ao trocar de sexo
+    const pass = respDepois === respAntes && abdomeDepois === abdomeAntes &&
+      respAntes === "MV+ bilateralmente, SRA" && abdomeAntes === "Abdome inocente";
+    reg("T28", "Trocar de sexo não substitui o texto do exame reduzido pela frase canônica do exame completo",
+      pass, { respAntes, respDepois, abdomeAntes, abdomeDepois });
+    await p.close();
+  }
+
   await browser.close();
   srv.close();
 

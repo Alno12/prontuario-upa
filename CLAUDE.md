@@ -98,6 +98,20 @@ mexer no bloco.
 independentes (Hidratado / Corado / Anictérico / Acianótico), para que desmarcar
 um só já registre o achado.
 
+**"exame reduzido"** é um terceiro botão, ao lado de "tudo normal" e "omitir
+tudo", com frases próprias em `EXAME_REDUZIDO` — não são as mesmas de
+`EXAME_ITENS.n()`. Duas coisas por causa disso:
+
+- `E.exameNormal[k]` fica `false` nessas linhas, do mesmo jeito que editar à
+  mão. Se ficasse `true`, uma troca de sexo posterior chamaria
+  `resyncExameNormal()` e substituiria a frase reduzida pela frase canônica do
+  exame completo — o médico veria "Abdome inocente" virar "Abdome plano,
+  flácido..." sozinho. Trava: `T28`.
+- O achado neurológico do exame reduzido entra na própria linha de
+  consciência (`EXAME_REDUZIDO.consc`); a linha "Neurológico" fica vazia
+  nesse modo, não duplicada. Itens fora de `EXAME_REDUZIDO` (pele, orofaringe,
+  otoscopia, coluna) são limpos ao acionar, igual a "omitir tudo".
+
 ## Silêncio não é "nega": o padrão de negação explícita
 
 Campo vazio já significa "o médico não tocou nisso" — mas não distingue "não

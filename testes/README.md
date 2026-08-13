@@ -47,6 +47,10 @@ CHROMIUM_PATH=/caminho/para/chrome node testes/regressao.js
 | T22 | Erro de JS numa sequência combinada dos controles novos |
 | T23 | O prefixo "Rótulo = " voltar no exame físico (é exceção deliberada — sinais vitais e antecedentes continuam com rótulo) — comparação exata com o texto de um exame normal |
 | T24 | O nome do campo do exame físico sumir de vez (placeholder/aria-label) em vez de virar `it.r+" = "+txt` na saída |
+| T25 | "Exame reduzido" deixar de gerar exatamente as 6 frases pedidas, ou vazar texto pras linhas fora do reduzido (neuro, coluna...) |
+| T26 | Concordância de gênero quebrando no exame reduzido |
+| T27 | "Tudo normal" ou "omitir tudo" deixando resíduo do "exame reduzido" (texto ou marcador "Normal" misturado) |
+| T28 | Troca de sexo substituindo o texto do exame reduzido pela frase canônica do exame completo — pega exatamente o bug de deixar `E.exameNormal` como `true` nessas linhas |
 
 ## Ao mexer na ferramenta
 

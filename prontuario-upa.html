@@ -204,6 +204,18 @@ const EXAME_ITENS=[
  {k:"neuro",r:"Neurológico",n:()=>"Sem déficits motores ou sensitivos focais, força e sensibilidade preservadas"},
  {k:"coluna",r:"Coluna / lombar",n:()=>"Sem dor à palpação de coluna, Giordano negativo"},
  {k:"geral",r:"Estado geral"}];
+
+/* Exame reduzido: versão curta pra queixa simples, com frases próprias — não são
+   as mesmas do exame completo (ausculta cardíaca é a exceção, coincide). O achado
+   neurológico entra na própria linha de consciência; a linha "Neurológico" fica
+   vazia nesse modo, não duplicada. Itens fora daqui (pele, orofaringe, otoscopia,
+   coluna) são limpos ao acionar. */
+const EXAME_REDUZIDO={
+ consc:()=>"Consciente, orientad"+(E.sexo==="F"?"a":"o")+", sem déficits focais evidentes",
+ ausc:()=>"BNF R 2T SS",
+ resp:()=>"MV+ bilateralmente, SRA",
+ abdome:()=>"Abdome inocente",
+ extrem:()=>"Boa perfusão periférica"};
 const GERAL_ADJ=[["hidratado","Hidratado","Hidratada"],["corado","Corado","Corada"],
  ["anicterico","Anictérico","Anictérica"],["acianotico","Acianótico","Acianótica"]];
 function linhaGeral(){
@@ -365,6 +377,7 @@ function bExame(){
  let h=EXAME_ITENS.map(linhaExameCampo).join("");
  h+='<div class="grade" style="margin-top:10px">'+ta("exameObs","Outras observações","- reavaliar em 1 hora","codigo")+'</div>';
  return bloco("O","Exame físico",'<button class="btn-mini" data-acao="resetExame">tudo normal</button> '+
+  '<button class="btn-mini" data-acao="exameReduzido">exame reduzido</button> '+
   '<button class="btn-mini" data-acao="omitirExame">omitir tudo</button>',h,null,"exame");
 }
 function bAval(){
@@ -475,6 +488,14 @@ function acao(a){
  if(a==="omitirExame"){EXAME_ITENS.forEach(it=>{if(it.k!=="geral"){E.exameNormal[it.k]=false;E.exameTxt[it.k]="";}});
   E.exameTxt.geral="";
   GERAL_ADJ.forEach(g=>E.geralCk[g[0]]=false);}
+ /* exame reduzido: frases próprias, não as do exame completo — por isso
+    exameNormal fica false (senão trocar de sexo ou clicar "Normal" de novo
+    sobrescreveria com a frase do exame completo, não a reduzida) */
+ if(a==="exameReduzido"){
+  EXAME_ITENS.forEach(it=>{if(it.k==="geral")return;
+   E.exameNormal[it.k]=false;E.exameTxt[it.k]=EXAME_REDUZIDO[it.k]?EXAME_REDUZIDO[it.k]():"";});
+  E.exameTxt.geral="";
+  GERAL_ADJ.forEach(g=>E.geralCk[g[0]]=true);}
  if(a==="todosAusentes")alertasVis().forEach(x=>{if(E.alertas[x]!=="PRESENTE"){E.alertas[x]="AUSENTE";E.alertaDet[x]="";}});
  if(a==="limpaAlertas"){E.alertas={};E.alertaDet={};}
 }
